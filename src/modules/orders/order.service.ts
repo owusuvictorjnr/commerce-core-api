@@ -40,7 +40,20 @@ export const createOrder = async (
       tenantId,
     });
   } catch (error) {
-    logger.error("Failed to emit ORDER_CREATED event", { error, orderId: order.id, tenantId });
+    if (error instanceof Error) {
+      logger.error("Failed to emit ORDER_CREATED event", {
+        errorMessage: error.message,
+        errorStack: error.stack,
+        orderId: order.id,
+        tenantId,
+      });
+    } else {
+      logger.error("Failed to emit ORDER_CREATED event", {
+        error,
+        orderId: order.id,
+        tenantId,
+      });
+    }
   }
 
   return order;
