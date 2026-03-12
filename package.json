@@ -9,7 +9,7 @@
     "prisma:generate": "prisma generate",
     "build": "tsc",
     "start": "node dist/app/api/server.js",
-    "lint": "eslint",
+    "lint": "eslint .",
     "test": "jest"
   },
   "dependencies": {
