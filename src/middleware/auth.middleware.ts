@@ -1,4 +1,5 @@
 import type { NextFunction, Request, Response } from "express";
+import { HttpError } from "../core/errors/http-error.js";
 
 type AuthContext = {
 	token: string;
@@ -11,13 +12,13 @@ export const authMiddleware = (req: Request, res: Response, next: NextFunction):
 	const authHeader = req.header(AUTH_HEADER);
 
 	if (!authHeader || !authHeader.startsWith("Bearer ")) {
-		res.status(401).json({ error: "Missing or invalid authorization header" });
+		next(new HttpError(401, "UNAUTHORIZED", "Missing or invalid authorization header"));
 		return;
 	}
 
 	const token = authHeader.slice("Bearer ".length).trim();
 	if (!token) {
-		res.status(401).json({ error: "Missing bearer token" });
+		next(new HttpError(401, "UNAUTHORIZED", "Missing bearer token"));
 		return;
 	}
 

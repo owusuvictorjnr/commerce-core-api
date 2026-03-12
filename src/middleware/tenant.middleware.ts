@@ -1,4 +1,5 @@
 import type { NextFunction, Request, Response } from "express";
+import { HttpError } from "../core/errors/http-error.js";
 
 export const TENANT_HEADER = "x-tenant-id";
 
@@ -6,7 +7,7 @@ export const tenantMiddleware = (req: Request, res: Response, next: NextFunction
 	const tenantId = req.header(TENANT_HEADER);
 
 	if (!tenantId) {
-		res.status(400).json({ error: `Missing required header: ${TENANT_HEADER}` });
+		next(new HttpError(400, "VALIDATION_ERROR", `Missing required header: ${TENANT_HEADER}`));
 		return;
 	}
 
