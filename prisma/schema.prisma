@@ -1,3 +1,4 @@
+// Prisma 7 datasource connection is configured in prisma.config.ts.
 datasource db {
   provider = "postgresql"
 }
