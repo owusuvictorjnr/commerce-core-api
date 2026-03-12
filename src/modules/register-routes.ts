@@ -1,6 +1,6 @@
 import { Router } from "express";
+import { ordersRouter } from "./orders/order.routes.js";
 
 export const RegisterRouter = Router();
 
-// Placeholder for dynamic route registration
-// In a real app, this would iterate over modules and register their routes
+RegisterRouter.use("/orders", ordersRouter);
