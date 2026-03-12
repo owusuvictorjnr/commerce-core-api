@@ -7,7 +7,7 @@ export interface HookPayloadMap {
 
 type HookFn<T> = (payload: T) => Promise<void> | void;
 
-class HookManager<TMap extends { [K in keyof TMap]: unknown }> {
+class HookManager<TMap extends object> {
   private hooks: { [K in keyof TMap]?: HookFn<TMap[K]>[] } = {};
 
   register<K extends keyof TMap>(event: K, fn: HookFn<TMap[K]>): void {
