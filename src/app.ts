@@ -14,8 +14,8 @@ export const createApp = () => {
   // Load routes dynamically
   app.use(RegisterRouter);
 
-  // Register event listeners
-  app.use(registerListeners);
+  // Register event listeners once during startup
+  registerListeners();
 
   return app;
 };
