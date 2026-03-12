@@ -1,4 +1,5 @@
 import { createApp } from "../../src/app.js";
+import { logger } from "../../src/core/logger/index.js";
 
 const DEFAULT_PORT = 4000;
 const rawPort = process.env["PORT"];
@@ -11,5 +12,5 @@ if (!Number.isInteger(PORT) || PORT <= 0) {
 const app = createApp();
 
 app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
+    logger.info("Server started", { port: PORT });
 });
