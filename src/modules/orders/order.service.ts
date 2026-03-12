@@ -2,7 +2,7 @@ import { hookManager } from "../../hooks/hooks-manager.js";
 import getPrismaClient from "../../database/prisma-client.js";
 import { Prisma } from "@prisma/client";
 
-export const createdOrder = async (
+export const createOrder = async (
   tenantId: string,
   data: Omit<Prisma.OrderCreateInput, "tenantId">,
 ) => {
