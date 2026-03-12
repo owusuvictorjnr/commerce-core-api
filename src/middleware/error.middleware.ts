@@ -20,14 +20,15 @@ export const errorMiddleware = (
 ): void => {
   void _next;
   void _req;
-  const error = err instanceof HttpError ? err : (err as Partial<HttpError>);
+  const isHttpError = err instanceof HttpError;
+  const error = isHttpError ? (err as HttpError) : (err as Partial<HttpError>);
   const statusCode = error.statusCode ?? 500;
   const code = error.code ?? "INTERNAL_SERVER_ERROR";
   const defaultMessage = "Internal server error";
   const safeMessage =
-    statusCode === 500 && code === "INTERNAL_SERVER_ERROR"
-      ? defaultMessage
-      : error.message || defaultMessage;
+    isHttpError || (statusCode >= 400 && statusCode < 500)
+      ? error.message || defaultMessage
+      : defaultMessage;
 
   logger.error("Request failed", {
     statusCode,
