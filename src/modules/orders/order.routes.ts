@@ -1,8 +1,10 @@
 import { Router } from "express";
+import type { NextFunction, Request, Response } from "express";
 import type { Prisma } from "@prisma/client";
 import { createOrder, getOrders } from "./order.service.js";
 import { tenantMiddleware } from "../../middleware/tenant.middleware.js";
 import { authMiddleware } from "../../middleware/auth.middleware.js";
+import { HttpError } from "../../core/errors/http-error.js";
 
 type OrdersRouteDependencies = {
   createOrder: typeof createOrder;
@@ -68,15 +70,13 @@ export const createOrdersRouter = (
   ordersRouter.use(authMiddleware);
   ordersRouter.use(tenantMiddleware);
 
-  ordersRouter.get("/", async (req, res) => {
+  ordersRouter.get("/", async (req: Request, res: Response, next: NextFunction) => {
     const limit = parsePositiveInt(req.query["limit"]);
     const cursor = parsePositiveInt(req.query["cursor"]);
 
     if ((req.query["limit"] !== undefined && limit === null) ||
         (req.query["cursor"] !== undefined && cursor === null)) {
-      res.status(400).json({
-        error: "Query parameters 'limit' and 'cursor' must be positive integers",
-      });
+      next(new HttpError(400, "VALIDATION_ERROR", "Query parameters 'limit' and 'cursor' must be positive integers"));
       return;
     }
 
@@ -94,9 +94,9 @@ export const createOrdersRouter = (
     });
   });
 
-  ordersRouter.post("/", async (req, res) => {
+  ordersRouter.post("/", async (req: Request, res: Response, next: NextFunction) => {
     if (!hasItemsArray(req.body)) {
-      res.status(400).json({ error: "Request body must include an items array" });
+      next(new HttpError(400, "VALIDATION_ERROR", "Request body must include an items array"));
       return;
     }
 

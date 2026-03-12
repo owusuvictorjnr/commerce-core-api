@@ -1,10 +1,6 @@
 import type { NextFunction, Request, Response } from "express";
 import { logger } from "../core/logger/index.js";
-
-type HttpError = Error & {
-  statusCode?: number;
-  code?: string;
-};
+import { HttpError } from "../core/errors/http-error.js";
 
 export const notFoundMiddleware = (_req: Request, res: Response): void => {
   res.status(404).json({
@@ -22,7 +18,7 @@ export const errorMiddleware = (
   _next: NextFunction,
 ): void => {
   void _next;
-  const error = err as HttpError;
+  const error = err instanceof HttpError ? err : (err as Partial<HttpError>);
   const statusCode = error.statusCode ?? 500;
   const code = error.code ?? "INTERNAL_SERVER_ERROR";
   const defaultMessage = "Internal server error";
