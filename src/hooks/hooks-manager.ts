@@ -1,22 +1,26 @@
-type HookFn = (payload: any) => Promise<void> | void;
+import type { Order, Prisma } from "@prisma/client";
 
-class HookManager {
-  private hooks: Record<string, HookFn[]> = {};
+export interface HookPayloadMap {
+  "order.beforeCreated": Prisma.OrderCreateInput;
+  "order.afterCreated": Order;
+}
 
-  register(event: string, fn: HookFn) {
-    if (!this.hooks[event]) {
-      this.hooks[event] = [];
-    }
-    this.hooks[event].push(fn);
+type HookFn<T> = (payload: T) => Promise<void> | void;
+
+class HookManager<TMap extends object> {
+  private hooks: { [K in keyof TMap]?: HookFn<TMap[K]>[] } = {};
+
+  register<K extends keyof TMap>(event: K, fn: HookFn<TMap[K]>): void {
+    const existing = this.hooks[event] ?? [];
+    this.hooks[event] = [...existing, fn];
   }
 
-  async run(event: string, payload: any) {
-    const handlers = this.hooks[event] || [];
-
+  async run<K extends keyof TMap>(event: K, payload: TMap[K]): Promise<void> {
+    const handlers = this.hooks[event] ?? [];
     for (const handler of handlers) {
       await handler(payload);
     }
   }
 }
 
-export const hookManager = new HookManager();
+export const hookManager = new HookManager<HookPayloadMap>();

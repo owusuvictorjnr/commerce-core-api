@@ -7,6 +7,11 @@ generator client {
 }
 
 model Order {
-  id    Int     @id @default(autoincrement())
-  data  Json?
+  id        Int      @id @default(autoincrement())
+  tenantId  String
+  items     Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
 }
