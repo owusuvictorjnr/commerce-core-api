@@ -34,15 +34,17 @@ const hasItemsArray = (value: unknown): value is { items: Prisma.InputJsonArray 
     return false;
   }
 
-  if (!("items" in value)) {
+  const record = value as Record<string, unknown>;
+  if (!("items" in record)) {
     return false;
   }
 
-  if (!Array.isArray(value.items)) {
+  const items = record["items"];
+  if (!Array.isArray(items)) {
     return false;
   }
 
-  return value.items.every((item) => isJsonValue(item));
+  return items.every((item) => isJsonValue(item));
 };
 
 const parsePositiveInt = (value: unknown): number | null => {
