@@ -3,6 +3,7 @@ import getPrismaClient from "../../database/prisma-client.js";
 import { Prisma } from "@prisma/client";
 import { eventBus } from "../../events/event-bus.js";
 import { EVENTS } from "../../events/event.types.js";
+import { logger } from "../../core/logger/index.js";
 
 const DEFAULT_PAGE_SIZE = 20;
 const MAX_PAGE_SIZE = 100;
@@ -33,10 +34,14 @@ export const createOrder = async (
   // After Hooks
   await hookManager.run("order.afterCreated", order);
 
-  eventBus.emit(EVENTS.ORDER_CREATED, {
-    orderId: order.id,
-    tenantId,
-  });
+  try {
+    eventBus.emit(EVENTS.ORDER_CREATED, {
+      orderId: order.id,
+      tenantId,
+    });
+  } catch (error) {
+    logger.error("Failed to emit ORDER_CREATED event", { error, orderId: order.id, tenantId });
+  }
 
   return order;
 };
