@@ -30,12 +30,18 @@ export const errorMiddleware = (
       ? error.message || defaultMessage
       : defaultMessage;
 
-  logger.error("Request failed", {
+  const logData = {
     statusCode,
     code,
     message: error instanceof Error ? error.message : String(err),
     stack: error instanceof Error ? error.stack : undefined,
-  });
+  };
+
+  if (statusCode >= 500) {
+    logger.error("Request failed", logData);
+  } else {
+    logger.warn("Request failed", logData);
+  }
 
   res.status(statusCode).json({
     error: {
