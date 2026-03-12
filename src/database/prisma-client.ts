@@ -1,13 +1,23 @@
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 
-const connectionString = process.env["DATABASE_URL"];
+let prisma: PrismaClient | null = null;
 
-if (!connectionString) {
-	throw new Error("DATABASE_URL is required");
-}
+export const getPrismaClient = (): PrismaClient => {
+	if (prisma) {
+		return prisma;
+	}
 
-const adapter = new PrismaPg({ connectionString });
-const prisma = new PrismaClient({ adapter });
+	const connectionString = process.env["DATABASE_URL"];
 
-export default prisma;
+	if (!connectionString) {
+		throw new Error("DATABASE_URL is required");
+	}
+
+	const adapter = new PrismaPg({ connectionString });
+	prisma = new PrismaClient({ adapter });
+
+	return prisma;
+};
+
+export default getPrismaClient;
