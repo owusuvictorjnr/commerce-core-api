@@ -3,6 +3,7 @@ import { logger } from "../core/logger/index.js";
 import { HttpError } from "../core/errors/http-error.js";
 
 export const notFoundMiddleware = (_req: Request, res: Response): void => {
+  void _req;
   res.status(404).json({
     error: {
       code: "NOT_FOUND",
@@ -18,6 +19,7 @@ export const errorMiddleware = (
   _next: NextFunction,
 ): void => {
   void _next;
+  void _req;
   const error = err instanceof HttpError ? err : (err as Partial<HttpError>);
   const statusCode = error.statusCode ?? 500;
   const code = error.code ?? "INTERNAL_SERVER_ERROR";
