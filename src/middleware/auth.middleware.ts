@@ -8,6 +8,10 @@ type AuthContext = {
 
 const AUTH_HEADER = "authorization";
 
+// TODO: Implement real token verification (e.g., JWT signature/claims validation).
+// Currently this middleware only validates the Authorization header format/presence,
+// not the token content. Any non-empty Bearer token is accepted.
+// For production, verify JWT signature, expiration, and scopes before allowing requests.
 export const authMiddleware = (req: Request, res: Response, next: NextFunction): void => {
 	const authHeader = req.header(AUTH_HEADER);
 
