@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { Prisma } from "@prisma/client";
+import type { Prisma } from "@prisma/client";
 import { createOrder, getOrders } from "./order.service.js";
 import { tenantMiddleware } from "../../middleware/tenant.middleware.js";
 import { authMiddleware } from "../../middleware/auth.middleware.js";
