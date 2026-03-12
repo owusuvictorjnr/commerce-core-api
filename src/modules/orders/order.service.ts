@@ -4,6 +4,7 @@ import { Prisma } from "@prisma/client";
 import { eventBus } from "../../events/event-bus.js";
 import { EVENTS } from "../../events/event.types.js";
 import { logger } from "../../core/logger/index.js";
+import { HttpError } from "../../core/errors/http-error.js";
 
 const DEFAULT_PAGE_SIZE = 20;
 const MAX_PAGE_SIZE = 100;
@@ -66,17 +67,25 @@ export const getOrders = async (
   const prisma = getPrismaClient();
   const pageSize = Math.min(Math.max(options.limit ?? DEFAULT_PAGE_SIZE, 1), MAX_PAGE_SIZE);
 
-  const orders = await prisma.order.findMany({
-    where: { tenantId },
-    orderBy: { id: "asc" },
-    take: pageSize + 1,
-    ...(options.cursor !== undefined
-      ? {
-          cursor: { id: options.cursor },
-          skip: 1,
-        }
-      : {}),
-  });
+  let orders: Awaited<ReturnType<typeof prisma.order.findMany>>;
+  try {
+    orders = await prisma.order.findMany({
+      where: { tenantId },
+      orderBy: { id: "asc" },
+      take: pageSize + 1,
+      ...(options.cursor !== undefined
+        ? {
+            cursor: { id: options.cursor },
+            skip: 1,
+          }
+        : {}),
+    });
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientValidationError) {
+      throw new HttpError(400, "VALIDATION_ERROR", "Invalid cursor: cursor record not found");
+    }
+    throw error;
+  }
 
   const hasMore = orders.length > pageSize;
   const items = hasMore ? orders.slice(0, pageSize) : orders;
