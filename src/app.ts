@@ -4,6 +4,7 @@ import helmet from "helmet";
 import { registerListeners } from "./events/register-listeners.js";
 import "./hooks/index.js";
 import { RegisterRouter } from "./modules/register-routes.js";
+import { errorMiddleware, notFoundMiddleware } from "./middleware/error.middleware.js";
 
 export const createApp = () => {
   const app = express();
@@ -14,6 +15,9 @@ export const createApp = () => {
 
   // Load routes dynamically
   app.use(RegisterRouter);
+
+  app.use(notFoundMiddleware);
+  app.use(errorMiddleware);
 
   // Register event listeners once during startup
   registerListeners();
