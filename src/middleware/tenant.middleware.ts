@@ -1,0 +1,15 @@
+import type { NextFunction, Request, Response } from "express";
+
+export const TENANT_HEADER = "x-tenant-id";
+
+export const tenantMiddleware = (req: Request, res: Response, next: NextFunction): void => {
+	const tenantId = req.header(TENANT_HEADER);
+
+	if (!tenantId) {
+		res.status(400).json({ error: `Missing required header: ${TENANT_HEADER}` });
+		return;
+	}
+
+	res.locals["tenantId"] = tenantId;
+	next();
+};
