@@ -25,14 +25,23 @@ export const errorMiddleware = (
   const error = err as HttpError;
   const statusCode = error.statusCode ?? 500;
   const code = error.code ?? "INTERNAL_SERVER_ERROR";
-  const message = error.message || "Internal server error";
+  const defaultMessage = "Internal server error";
+  const safeMessage =
+    statusCode === 500 && code === "INTERNAL_SERVER_ERROR"
+      ? defaultMessage
+      : error.message || defaultMessage;
 
-  logger.error("Request failed", { statusCode, code, message });
+  logger.error("Request failed", {
+    statusCode,
+    code,
+    message: error instanceof Error ? error.message : String(err),
+    stack: error instanceof Error ? error.stack : undefined,
+  });
 
   res.status(statusCode).json({
     error: {
       code,
-      message,
+      message: safeMessage,
     },
   });
 };
