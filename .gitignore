@@ -224,3 +224,5 @@ dist
 .env.example.test.local.bak16
 
 // .env.example.production
+# Track safe environment template
+!.env.example
