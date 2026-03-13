@@ -47,6 +47,17 @@ const buildFindManyArgs = (
     : {}),
 });
 
+const findOrdersWithCursorHandling = async (
+  prisma: ReturnType<typeof getPrismaClient>,
+  args: Prisma.OrderFindManyArgs,
+) => {
+  try {
+    return await prisma.order.findMany(args);
+  } catch (error) {
+    return mapCursorQueryError(error);
+  }
+};
+
 export const createOrder = async (
   tenantId: string,
   data: Omit<Prisma.OrderCreateInput, "tenantId">,
@@ -95,13 +106,7 @@ export const getOrders = async (
   const prisma = getPrismaClient();
   const pageSize = Math.min(Math.max(options.limit ?? DEFAULT_PAGE_SIZE, 1), MAX_PAGE_SIZE);
   const findManyArgs = buildFindManyArgs(tenantId, pageSize, options);
-
-  let orders: Awaited<ReturnType<typeof prisma.order.findMany>>;
-  try {
-    orders = await prisma.order.findMany(findManyArgs);
-  } catch (error) {
-    mapCursorQueryError(error);
-  }
+  const orders = await findOrdersWithCursorHandling(prisma, findManyArgs);
 
   const hasMore = orders.length > pageSize;
   const items = hasMore ? orders.slice(0, pageSize) : orders;
