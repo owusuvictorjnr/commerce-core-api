@@ -24,7 +24,10 @@ describe("rateLimiteMiddleware", () => {
     expect(second.status).toBe(200);
     expect(first.headers["x-ratelimit-limit"]).toBe("2");
     expect(first.headers["x-ratelimit-remaining"]).toBe("1");
+    expect(first.headers["ratelimit-limit"]).toBe("2");
+    expect(first.headers["ratelimit-remaining"]).toBe("1");
     expect(second.headers["x-ratelimit-remaining"]).toBe("0");
+    expect(second.headers["ratelimit-remaining"]).toBe("0");
   });
 
   it("returns 429 after the request limit is exceeded", async () => {
@@ -41,6 +44,8 @@ describe("rateLimiteMiddleware", () => {
     });
     expect(second.headers["x-ratelimit-limit"]).toBe("1");
     expect(second.headers["x-ratelimit-remaining"]).toBe("0");
+    expect(second.headers["ratelimit-limit"]).toBe("1");
+    expect(second.headers["ratelimit-remaining"]).toBe("0");
     expect(second.headers["retry-after"]).toBeDefined();
   });
 });

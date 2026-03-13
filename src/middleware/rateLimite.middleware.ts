@@ -63,6 +63,9 @@ const applyHeaders = (res: Response, headers: RateLimitHeaders): void => {
 	res.setHeader("X-RateLimit-Limit", headers.limit);
 	res.setHeader("X-RateLimit-Remaining", headers.remaining);
 	res.setHeader("X-RateLimit-Reset", headers.reset);
+	res.setHeader("RateLimit-Limit", headers.limit);
+	res.setHeader("RateLimit-Remaining", headers.remaining);
+	res.setHeader("RateLimit-Reset", headers.reset);
 	if (headers.retryAfter !== undefined) {
 		res.setHeader("Retry-After", headers.retryAfter);
 	}
