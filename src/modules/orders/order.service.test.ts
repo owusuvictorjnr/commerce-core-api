@@ -72,6 +72,24 @@ describe("getOrders", () => {
     expect(result.nextCursor).toBeNull();
   });
 
+  it("maps Prisma P2025 cursor errors to HttpError(400)", async () => {
+    findManyMock.mockRejectedValue(
+      new Prisma.PrismaClientKnownRequestError("Cursor record not found", {
+        code: "P2025",
+        clientVersion: "test",
+      }),
+    );
+
+    await expect(getOrders("tenant-1", { limit: 2, cursor: 999 })).rejects.toEqual(
+      expect.objectContaining({
+        statusCode: 400,
+        code: "VALIDATION_ERROR",
+      }),
+    );
+
+    await expect(getOrders("tenant-1", { limit: 2, cursor: 999 })).rejects.toBeInstanceOf(HttpError);
+  });
+
   it("maps Prisma cursor validation errors to HttpError(400)", async () => {
     findManyMock.mockRejectedValue(
       new Prisma.PrismaClientValidationError("Invalid cursor", {

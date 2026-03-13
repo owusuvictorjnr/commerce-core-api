@@ -81,6 +81,9 @@ export const getOrders = async (
         : {}),
     });
   } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025") {
+      throw new HttpError(400, "VALIDATION_ERROR", "Invalid cursor: cursor record not found");
+    }
     if (error instanceof Prisma.PrismaClientValidationError) {
       throw new HttpError(400, "VALIDATION_ERROR", "Invalid cursor: cursor record not found");
     }
