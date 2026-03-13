@@ -11,6 +11,13 @@ type RateState = {
 	resetAt: number;
 };
 
+type RateLimitHeaders = {
+	limit: string;
+	remaining: string;
+	reset: string;
+	retryAfter?: string;
+};
+
 const DEFAULT_WINDOW_MS = 60_000;
 const DEFAULT_MAX_REQUESTS = 100;
 
@@ -35,27 +42,57 @@ const getClientKey = (req: Request): string => {
 	return req.ip || req.socket.remoteAddress || "unknown";
 };
 
+const buildHeaders = (
+	options: RateLimitOptions,
+	entry: RateState,
+	now: number,
+	isLimited: boolean,
+): RateLimitHeaders => {
+	const remaining = isLimited ? 0 : Math.max(options.maxRequests - entry.count, 0);
+	const resetSeconds = Math.max(Math.ceil((entry.resetAt - now) / 1000), 0);
+
+	return {
+		limit: String(options.maxRequests),
+		remaining: String(remaining),
+		reset: String(resetSeconds),
+		...(isLimited ? { retryAfter: String(resetSeconds) } : {}),
+	};
+};
+
+const applyHeaders = (res: Response, headers: RateLimitHeaders): void => {
+	res.setHeader("X-RateLimit-Limit", headers.limit);
+	res.setHeader("X-RateLimit-Remaining", headers.remaining);
+	res.setHeader("X-RateLimit-Reset", headers.reset);
+	if (headers.retryAfter !== undefined) {
+		res.setHeader("Retry-After", headers.retryAfter);
+	}
+};
+
 export const createRateLimiteMiddleware = (options: RateLimitOptions) => {
 	const store = new Map<string, RateState>();
 
-	return (req: Request, _res: Response, next: NextFunction): void => {
+	return (req: Request, res: Response, next: NextFunction): void => {
 		const now = Date.now();
 		const key = getClientKey(req);
-		const entry = store.get(key);
+		let entry = store.get(key);
 
 		if (!entry || now >= entry.resetAt) {
-			store.set(key, { count: 1, resetAt: now + options.windowMs });
+			entry = { count: 1, resetAt: now + options.windowMs };
+			store.set(key, entry);
+			applyHeaders(res, buildHeaders(options, entry, now, false));
 			next();
 			return;
 		}
 
 		if (entry.count >= options.maxRequests) {
+			applyHeaders(res, buildHeaders(options, entry, now, true));
 			next(new HttpError(429, "RATE_LIMITED", "Too many requests"));
 			return;
 		}
 
 		entry.count += 1;
 		store.set(key, entry);
+		applyHeaders(res, buildHeaders(options, entry, now, false));
 		next();
 	};
 };
