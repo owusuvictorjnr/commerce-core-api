@@ -14,8 +14,10 @@ type GetOrdersOptions = {
   cursor?: number;
 };
 
+type OrderRow = Prisma.OrderGetPayload<Record<string, never>>;
+
 type GetOrdersResult = {
-  items: Awaited<ReturnType<typeof createOrder>>[];
+  items: OrderRow[];
   nextCursor: number | null;
 };
 
