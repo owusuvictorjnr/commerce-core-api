@@ -25,7 +25,7 @@ services:
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in your environment}@db:5432/${POSTGRES_DB:-commerce_core_api}
       PORT: ${PORT:-4000}
-      NODE_ENV: ${NODE_ENV:-production}
+      NODE_ENV: ${NODE_ENV:-development}
     ports:
       - "4000:4000"
 
