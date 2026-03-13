@@ -90,20 +90,10 @@ describe("getOrders", () => {
     await expect(getOrders("tenant-1", { limit: 2, cursor: 999 })).rejects.toBeInstanceOf(HttpError);
   });
 
-  it("maps Prisma cursor validation errors to HttpError(400)", async () => {
-    findManyMock.mockRejectedValue(
-      new Prisma.PrismaClientValidationError("Invalid cursor", {
-        clientVersion: "test",
-      }),
-    );
+  it("rethrows unexpected query errors", async () => {
+    const dbError = new Error("database unavailable");
+    findManyMock.mockRejectedValue(dbError);
 
-    await expect(getOrders("tenant-1", { limit: 2, cursor: 999 })).rejects.toEqual(
-      expect.objectContaining({
-        statusCode: 400,
-        code: "VALIDATION_ERROR",
-      }),
-    );
-
-    await expect(getOrders("tenant-1", { limit: 2, cursor: 999 })).rejects.toBeInstanceOf(HttpError);
+    await expect(getOrders("tenant-1", { limit: 2, cursor: 999 })).rejects.toBe(dbError);
   });
 });
