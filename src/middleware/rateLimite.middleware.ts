@@ -31,14 +31,6 @@ const parsePositiveInt = (value: string | undefined, fallback: number): number =
 };
 
 const getClientKey = (req: Request): string => {
-	const forwardedFor = req.header("x-forwarded-for");
-	if (forwardedFor) {
-		const firstIp = forwardedFor.split(",")[0]?.trim();
-		if (firstIp) {
-			return firstIp;
-		}
-	}
-
 	return req.ip || req.socket.remoteAddress || "unknown";
 };
 
