@@ -19,6 +19,34 @@ type GetOrdersResult = {
   nextCursor: number | null;
 };
 
+const mapCursorQueryError = (error: unknown): never => {
+  if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025") {
+    throw new HttpError(400, "VALIDATION_ERROR", "Invalid cursor: cursor record not found");
+  }
+
+  if (error instanceof Prisma.PrismaClientValidationError) {
+    throw new HttpError(400, "VALIDATION_ERROR", "Invalid cursor: cursor record not found");
+  }
+
+  throw error;
+};
+
+const buildFindManyArgs = (
+  tenantId: string,
+  pageSize: number,
+  options: GetOrdersOptions,
+): Prisma.OrderFindManyArgs => ({
+  where: { tenantId },
+  orderBy: { id: "asc" },
+  take: pageSize + 1,
+  ...(options.cursor !== undefined
+    ? {
+        cursor: { id: options.cursor },
+        skip: 1,
+      }
+    : {}),
+});
+
 export const createOrder = async (
   tenantId: string,
   data: Omit<Prisma.OrderCreateInput, "tenantId">,
@@ -66,28 +94,13 @@ export const getOrders = async (
 ): Promise<GetOrdersResult> => {
   const prisma = getPrismaClient();
   const pageSize = Math.min(Math.max(options.limit ?? DEFAULT_PAGE_SIZE, 1), MAX_PAGE_SIZE);
+  const findManyArgs = buildFindManyArgs(tenantId, pageSize, options);
 
   let orders: Awaited<ReturnType<typeof prisma.order.findMany>>;
   try {
-    orders = await prisma.order.findMany({
-      where: { tenantId },
-      orderBy: { id: "asc" },
-      take: pageSize + 1,
-      ...(options.cursor !== undefined
-        ? {
-            cursor: { id: options.cursor },
-            skip: 1,
-          }
-        : {}),
-    });
+    orders = await prisma.order.findMany(findManyArgs);
   } catch (error) {
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025") {
-      throw new HttpError(400, "VALIDATION_ERROR", "Invalid cursor: cursor record not found");
-    }
-    if (error instanceof Prisma.PrismaClientValidationError) {
-      throw new HttpError(400, "VALIDATION_ERROR", "Invalid cursor: cursor record not found");
-    }
-    throw error;
+    mapCursorQueryError(error);
   }
 
   const hasMore = orders.length > pageSize;
