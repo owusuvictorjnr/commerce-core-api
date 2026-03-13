@@ -12,9 +12,8 @@ type LogData = {
 
 const DEFAULT_ERROR_MESSAGE = "Internal server error";
 
-const getSafeMessage = (error: ErrorLike, isHttpError: boolean, statusCode: number): string => {
-  const isClientError = statusCode >= 400 && statusCode < 500;
-  if (isHttpError || isClientError) {
+const getSafeMessage = (error: ErrorLike, isHttpError: boolean): string => {
+  if (isHttpError) {
     return error.message || DEFAULT_ERROR_MESSAGE;
   }
   return DEFAULT_ERROR_MESSAGE;
@@ -63,7 +62,7 @@ export const errorMiddleware = (
   const error = isHttpError ? (err as HttpError) : (err as ErrorLike);
   const statusCode = error.statusCode ?? 500;
   const code = error.code ?? "INTERNAL_SERVER_ERROR";
-  const safeMessage = getSafeMessage(error, isHttpError, statusCode);
+  const safeMessage = getSafeMessage(error, isHttpError);
   const logData = getLogData(err, statusCode, code);
 
   logRequestFailure(statusCode, logData);
