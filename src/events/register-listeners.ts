@@ -1,6 +1,7 @@
 import { registerAnalyticsListener } from "./listeners/analytics.listener.js";
 import { registerEmailListener } from "./listeners/email.listener.js";
 import { registerInventoryListener } from "./listeners/inventory.listener.js";
+import { logger } from "../core/logger/index.js";
 
 let listenersRegistered = false;
 
@@ -14,5 +15,5 @@ export const registerListeners = () => {
     registerInventoryListener();
 
     listenersRegistered = true;
-    console.log("Event listeners registered");
+    logger.info("Event listeners registered");
 };
