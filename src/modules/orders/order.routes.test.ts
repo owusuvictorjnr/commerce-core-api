@@ -3,8 +3,6 @@ import request from "supertest";
 import { jest } from "@jest/globals";
 import { createOrdersRouter } from "./order.routes.js";
 import { errorMiddleware } from "../../middleware/error.middleware.js";
-import { authMiddleware } from "../../middleware/auth.middleware.js";
-import { tenantMiddleware } from "../../middleware/tenant.middleware.js";
 import type { createOrder, getOrders } from "./order.service.js";
 
 const makeDeps = () => {

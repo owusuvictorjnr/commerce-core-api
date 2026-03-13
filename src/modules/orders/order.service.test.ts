@@ -1,9 +1,10 @@
 import { jest } from "@jest/globals";
 import { Prisma } from "@prisma/client";
+import type { Order } from "@prisma/client";
 import { HttpError } from "../../core/errors/http-error.js";
 
-const findManyMock = jest.fn();
-const createMock = jest.fn();
+const findManyMock = jest.fn<(...args: unknown[]) => Promise<Order[]>>();
+const createMock = jest.fn<(...args: unknown[]) => Promise<unknown>>();
 
 jest.unstable_mockModule("../../database/prisma-client.js", () => ({
   default: () => ({
