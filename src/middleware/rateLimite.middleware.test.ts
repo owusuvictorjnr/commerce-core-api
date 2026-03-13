@@ -1,12 +1,12 @@
 import express from "express";
 import request from "supertest";
-import { createRateLimiteMiddleware } from "./rateLimite.middleware.js";
+import { createRateLimitMiddleware } from "./rateLimite.middleware.js";
 import { errorMiddleware } from "./error.middleware.js";
 
-describe("rateLimiteMiddleware", () => {
+describe("rateLimitMiddleware", () => {
   const createTestApp = (maxRequests: number) => {
     const app = express();
-    app.use(createRateLimiteMiddleware({ windowMs: 60_000, maxRequests }));
+    app.use(createRateLimitMiddleware({ windowMs: 60_000, maxRequests }));
     app.get("/ping", (_req, res) => {
       res.status(200).json({ ok: true });
     });

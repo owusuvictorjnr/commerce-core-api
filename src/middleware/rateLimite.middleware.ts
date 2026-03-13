@@ -63,7 +63,7 @@ const applyHeaders = (res: Response, headers: RateLimitHeaders): void => {
 	}
 };
 
-export const createRateLimiteMiddleware = (options: RateLimitOptions) => {
+export const createRateLimitMiddleware = (options: RateLimitOptions) => {
 	const store = new Map<string, RateState>();
 
 	return (req: Request, res: Response, next: NextFunction): void => {
@@ -95,7 +95,7 @@ export const createRateLimiteMiddleware = (options: RateLimitOptions) => {
 const windowMs = parsePositiveInt(process.env["RATE_LIMIT_WINDOW_MS"], DEFAULT_WINDOW_MS);
 const maxRequests = parsePositiveInt(process.env["RATE_LIMIT_MAX"], DEFAULT_MAX_REQUESTS);
 
-export const rateLimiteMiddleware = createRateLimiteMiddleware({
+export const rateLimitMiddleware = createRateLimitMiddleware({
 	windowMs,
 	maxRequests,
 });
