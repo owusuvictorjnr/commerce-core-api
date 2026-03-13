@@ -5,6 +5,7 @@ import { registerListeners } from "./events/register-listeners.js";
 import "./hooks/index.js";
 import { RegisterRouter } from "./modules/register-routes.js";
 import { errorMiddleware, notFoundMiddleware } from "./middleware/error.middleware.js";
+import { rateLimiteMiddleware } from "./middleware/rateLimite.middleware.js";
 
 export const createApp = () => {
   const app = express();
@@ -12,6 +13,7 @@ export const createApp = () => {
   app.use(express.json());
   app.use(cors());
   app.use(helmet());
+  app.use(rateLimiteMiddleware);
 
   // Load routes dynamically
   app.use(RegisterRouter);
