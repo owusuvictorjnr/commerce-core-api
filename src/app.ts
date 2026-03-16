@@ -22,8 +22,9 @@ const parseTrustProxy = (value: string | undefined): boolean | number => {
 
 export const createApp = () => {
    const app = express();
-   // Ensure correct client IP when behind a reverse proxy/load balancer
-   app.set("trust proxy", parseTrustProxy(process.env["TRUST_PROXY"]) || 1);
+   const trustProxyEnv = process.env["TRUST_PROXY"];
+   const trustProxy = trustProxyEnv === undefined ? 1 : parseTrustProxy(trustProxyEnv);
+   app.set("trust proxy", trustProxy);
 
   app.use(express.json());
   app.use(cors());
