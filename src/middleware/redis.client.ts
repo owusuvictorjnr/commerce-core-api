@@ -1,4 +1,5 @@
 import { createClient } from "redis";
+import { logger } from "../core/logger/index.js";
 
 const redisUrl = process.env["REDIS_URL"] || "redis://localhost:6379";
 
@@ -7,8 +8,21 @@ export const redisClient = createClient({
 });
 
 redisClient.on("error", (err) => {
-  console.error("Redis client error in rate limiter:", err);
+  logger.error("Redis client error in rate limiter:", err);
 });
 
-// Start connecting immediately
-void redisClient.connect();
+// Start connecting immediately, but handle connection errors to prevent unhandled rejections
+void redisClient.connect().catch((err) => {
+  logger.error("Failed to connect to Redis on startup:", err);
+});
+
+/**
+ * Controlled initialization of the Redis client.
+ * Returns the existing connection if already open.
+ */
+export const initRedis = async (): Promise<void> => {
+  if (redisClient.isOpen) {
+    return;
+  }
+  await redisClient.connect();
+};
