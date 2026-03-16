@@ -5,7 +5,7 @@ import { registerListeners } from "./events/register-listeners.js";
 import "./hooks/index.js";
 import { RegisterRouter } from "./modules/register-routes.js";
 import { errorMiddleware, notFoundMiddleware } from "./middleware/error.middleware.js";
-import { rateLimitMiddleware } from "./middleware/rateLimite.middleware.js";
+import { rateLimitMiddleware } from "./middleware/rateLimit.middleware.js";
 
 const parseTrustProxy = (value: string | undefined): boolean | number => {
   if (!value || value === "false") {
@@ -21,8 +21,9 @@ const parseTrustProxy = (value: string | undefined): boolean | number => {
 };
 
 export const createApp = () => {
-  const app = express();
-  app.set("trust proxy", parseTrustProxy(process.env["TRUST_PROXY"]));
+   const app = express();
+   // Ensure correct client IP when behind a reverse proxy/load balancer
+   app.set("trust proxy", parseTrustProxy(process.env["TRUST_PROXY"]) || 1);
 
   app.use(express.json());
   app.use(cors());
