@@ -8,12 +8,18 @@ export const redisClient = createClient({
 });
 
 redisClient.on("error", (err) => {
-  logger.error("Redis client error in rate limiter:", err);
+  logger.error("Redis client error in rate limiter:", {
+    error: err instanceof Error ? err.message : String(err),
+    stack: err instanceof Error ? err.stack : undefined,
+  });
 });
 
 // Start connecting immediately, but handle connection errors to prevent unhandled rejections
 void redisClient.connect().catch((err) => {
-  logger.error("Failed to connect to Redis on startup:", err);
+  logger.error("Failed to connect to Redis on startup:", {
+    error: err instanceof Error ? err.message : String(err),
+    stack: err instanceof Error ? err.stack : undefined,
+  });
 });
 
 /**
