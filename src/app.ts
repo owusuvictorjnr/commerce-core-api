@@ -23,7 +23,7 @@ const parseTrustProxy = (value: string | undefined): boolean | number => {
 export const createApp = () => {
    const app = express();
    const trustProxyEnv = process.env["TRUST_PROXY"];
-   const trustProxy = trustProxyEnv === undefined ? 1 : parseTrustProxy(trustProxyEnv);
+   const trustProxy = trustProxyEnv === undefined ? false : parseTrustProxy(trustProxyEnv);
    app.set("trust proxy", trustProxy);
 
   app.use(express.json());
