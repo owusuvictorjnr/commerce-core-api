@@ -35,8 +35,8 @@ jest.unstable_mockModule("./redis.client.js", () => ({
       return "OK";
     }),
     connect: jest.fn(async () => {
-      // Return a basic mock matching the expected return type
-      return {} as unknown as Awaited<ReturnType<typeof redisClient.connect>>;
+      // Return a basic mock; avoid referencing redisClient in this factory to prevent evaluation errors
+      return {} as unknown;
     }),
     on: jest.fn(),
   },
@@ -66,6 +66,7 @@ describe("rateLimitMiddleware", () => {
     const app = express();
     app.use(createRateLimitMiddleware({ windowMs: 60_000, maxRequests, failOpen }));
     app.get("/ping", (_req, res) => {
+      void _req;
       res.status(200).json({ ok: true });
     });
     app.use(errorMiddleware);
