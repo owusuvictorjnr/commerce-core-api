@@ -24,10 +24,21 @@ services:
         condition: service_healthy
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in your environment}@db:5432/${POSTGRES_DB:-commerce_core_api}
+      REDIS_URL: redis://redis:6379
       PORT: ${PORT:-4000}
       NODE_ENV: ${NODE_ENV:-development}
     ports:
       - "4000:4000"
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
 volumes:
   postgres_data:
