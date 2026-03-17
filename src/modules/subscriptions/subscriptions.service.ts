@@ -35,6 +35,7 @@ export const createSubscription = async (
   try {
     return await prisma.preorder.create({
       data: {
+        tenantId,
         orderId: data.orderId,
         pickupDeadline: data.pickupDeadline,
       },
@@ -55,11 +56,7 @@ export const listSubscriptions = async (
   const pageSize = Math.min(Math.max(options.limit ?? DEFAULT_PAGE_SIZE, 1), MAX_PAGE_SIZE);
 
   const records = await prisma.preorder.findMany({
-    where: {
-      order: {
-        tenantId,
-      },
-    },
+    where: { tenantId },
     orderBy: { id: "asc" },
     take: pageSize + 1,
     ...(options.cursor ? { cursor: { id: options.cursor }, skip: 1 } : {}),
@@ -75,12 +72,7 @@ export const listSubscriptions = async (
 export const getSubscriptionById = async (tenantId: string, id: string) => {
   const prisma = getPrismaClient();
   return prisma.preorder.findFirst({
-    where: {
-      id,
-      order: {
-        tenantId,
-      },
-    },
+    where: { id, tenantId },
   });
 };
 
@@ -99,12 +91,7 @@ export const updateSubscription = async (
 
   const prisma = getPrismaClient();
   const existing = await prisma.preorder.findFirst({
-    where: {
-      id,
-      order: {
-        tenantId,
-      },
-    },
+    where: { id, tenantId },
   });
   if (!existing) {
     throw new HttpError(404, "NOT_FOUND", "Subscription not found");

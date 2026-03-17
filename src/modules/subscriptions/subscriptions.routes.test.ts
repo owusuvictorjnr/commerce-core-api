@@ -25,6 +25,7 @@ const makeAuthHeaders = () => ({
 
 const makeSubscription = (overrides: Record<string, unknown> = {}) => ({
   id: "sub-1",
+  tenantId: "tenant-1",
   orderId: "order-1",
   preorderStatus: "RESERVED",
   pickupDeadline: new Date("2026-12-31T00:00:00.000Z"),

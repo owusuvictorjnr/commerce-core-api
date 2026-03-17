@@ -42,6 +42,7 @@ const makeOrder = (overrides: Partial<Order> = {}): Order => ({
 
 const makeSubscription = (overrides: Partial<Preorder> = {}): Preorder => ({
   id: "sub-1",
+  tenantId: "tenant-1",
   orderId: "order-1",
   preorderStatus: "RESERVED",
   pickupDeadline: new Date("2026-12-31T00:00:00.000Z"),
@@ -102,11 +103,7 @@ describe("listSubscriptions", () => {
     expect(result.items).toHaveLength(2);
     expect(result.nextCursor).toBe("sub-2");
     expect(preorderFindManyMock).toHaveBeenCalledWith({
-      where: {
-        order: {
-          tenantId: "tenant-1",
-        },
-      },
+      where: { tenantId: "tenant-1" },
       orderBy: { id: "asc" },
       take: 3,
     });

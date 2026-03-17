@@ -44,6 +44,7 @@ const makeOrder = (overrides: Partial<Order> = {}): Order => ({
 
 const makePayment = (overrides: Partial<Payment> = {}): Payment => ({
   id: "pay-1",
+  tenantId: "tenant-1",
   orderId: "order-1",
   amount: 100,
   paymentType: "DEPOSIT",
@@ -151,7 +152,7 @@ describe("getPayments", () => {
     expect(result.items).toHaveLength(1);
     expect(result.nextCursor).toBeNull();
     expect(paymentFindManyMock).toHaveBeenCalledWith({
-      where: { orderId: "order-1" },
+      where: { tenantId: "tenant-1", orderId: "order-1" },
       orderBy: { id: "asc" },
       take: 21,
     });

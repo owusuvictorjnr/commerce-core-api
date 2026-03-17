@@ -19,12 +19,14 @@ const makeAuthHeaders = () => ({
 
 const makePayment = (overrides: Record<string, unknown> = {}) => ({
   id: "pay-1",
+  tenantId: "tenant-1",
   orderId: "order-1",
   amount: 100,
   paymentType: "DEPOSIT",
   status: "SUCCESS",
   transactionReference: null,
   createdAt: new Date(),
+  updatedAt: new Date(),
   ...overrides,
 });
 

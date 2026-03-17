@@ -48,6 +48,7 @@ export const createPayment = async (
 
     const createdPayment = await tx.payment.create({
       data: {
+        tenantId,
         orderId,
         amount: data.amount,
         paymentType: data.paymentType,
@@ -94,7 +95,7 @@ export const getPayments = async (
 
   const pageSize = Math.min(Math.max(options.limit ?? DEFAULT_PAGE_SIZE, 1), MAX_PAGE_SIZE);
   const items = await prisma.payment.findMany({
-    where: { orderId },
+    where: { tenantId, orderId },
     orderBy: { id: "asc" },
     take: pageSize + 1,
     ...(options.cursor ? { cursor: { id: options.cursor }, skip: 1 } : {}),
@@ -108,7 +109,7 @@ export const getPayments = async (
 export const getPaymentById = async (tenantId: string, paymentId: string) => {
   const prisma = getPrismaClient();
   const payment = await prisma.payment.findFirst({
-    where: { id: paymentId, order: { tenantId } },
+    where: { id: paymentId, tenantId },
   });
   if (!payment) {
     throw new HttpError(404, "NOT_FOUND", "Payment not found");

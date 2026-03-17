@@ -50,6 +50,8 @@ model Tenant {
   inventories Inventory[]
   orders    Order[]
   orderItems OrderItem[]
+  payments  Payment[]
+  preorders Preorder[]
 
   @@index([id])
 }
@@ -180,6 +182,7 @@ model OrderItem {
 
 model Payment {
   id                    String         @id @default(uuid())
+  tenantId              String
   orderId               String
 
   amount                Float
@@ -187,12 +190,15 @@ model Payment {
   status                PaymentStatus  @default(PENDING)
   transactionReference  String?
 
-  order                 Order          @relation(fields: [orderId], references: [id])
+  tenant                Tenant         @relation(fields: [tenantId], references: [id])
+  order                 Order          @relation(fields: [tenantId, orderId], references: [tenantId, id])
 
   createdAt             DateTime       @default(now())
   updatedAt             DateTime       @updatedAt
 
+  @@index([tenantId])
   @@index([orderId])
+  @@index([tenantId, orderId])
 }
 
 ///////////////////////
@@ -201,13 +207,19 @@ model Payment {
 
 model Preorder {
   id              String          @id @default(uuid())
-  orderId         String          @unique
+  tenantId        String
+  orderId         String
 
   preorderStatus  PreorderStatus  @default(RESERVED)
   pickupDeadline  DateTime
 
-  order           Order           @relation(fields: [orderId], references: [id])
+  tenant          Tenant          @relation(fields: [tenantId], references: [id])
+  order           Order           @relation(fields: [tenantId, orderId], references: [tenantId, id])
 
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
+
+  @@unique([tenantId, orderId])
+  @@index([tenantId])
+  @@index([tenantId, orderId])
 }
