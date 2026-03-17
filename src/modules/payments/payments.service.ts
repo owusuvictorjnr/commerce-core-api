@@ -109,6 +109,15 @@ export const getPayments = async (
   }
 
   const pageSize = Math.min(Math.max(options.limit ?? DEFAULT_PAGE_SIZE, 1), MAX_PAGE_SIZE);
+  if (options.cursor) {
+    const cursorPayment = await prisma.payment.findFirst({
+      where: { id: options.cursor, tenantId, orderId },
+    });
+    if (!cursorPayment) {
+      throw new HttpError(400, "VALIDATION_ERROR", "Invalid cursor");
+    }
+  }
+
   const items = await prisma.payment.findMany({
     where: { tenantId, orderId },
     orderBy: { id: "asc" },

@@ -178,6 +178,7 @@ describe("getPayments", () => {
   beforeEach(() => {
     orderFindFirstMock.mockReset();
     paymentFindManyMock.mockReset();
+    paymentFindFirstMock.mockReset();
   });
 
   it("throws 404 when order not found", async () => {
@@ -195,6 +196,36 @@ describe("getPayments", () => {
       where: { tenantId: "tenant-1", orderId: "order-1" },
       orderBy: { id: "asc" },
       take: 21,
+    });
+  });
+
+  it("throws 400 when cursor is invalid", async () => {
+    orderFindFirstMock.mockResolvedValue(makeOrder());
+    paymentFindFirstMock.mockResolvedValue(null);
+
+    await expect(
+      getPayments("tenant-1", "order-1", { cursor: "missing-cursor" }),
+    ).rejects.toMatchObject({
+      statusCode: 400,
+      message: "Invalid cursor",
+    });
+
+    expect(paymentFindManyMock).not.toHaveBeenCalled();
+  });
+
+  it("applies cursor pagination when cursor is valid", async () => {
+    orderFindFirstMock.mockResolvedValue(makeOrder());
+    paymentFindFirstMock.mockResolvedValue(makePayment({ id: "pay-1" }));
+    paymentFindManyMock.mockResolvedValue([makePayment({ id: "pay-2" })]);
+
+    await getPayments("tenant-1", "order-1", { cursor: "pay-1", limit: 2 });
+
+    expect(paymentFindManyMock).toHaveBeenCalledWith({
+      where: { tenantId: "tenant-1", orderId: "order-1" },
+      orderBy: { id: "asc" },
+      take: 3,
+      cursor: { id: "pay-1" },
+      skip: 1,
     });
   });
 });
