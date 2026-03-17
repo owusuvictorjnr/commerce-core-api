@@ -59,6 +59,14 @@ export const adjustInventory = async (
       "Insufficient stock: resulting quantity cannot be negative",
     );
   }
+  const reservedQuantity = inventory.reservedQuantity ?? 0;
+  if (newQuantity < reservedQuantity) {
+    throw new HttpError(
+      400,
+      "VALIDATION_ERROR",
+      "Insufficient stock: resulting quantity cannot be less than reserved quantity",
+    );
+  }
   return prisma.inventory.update({
     where: { productId },
     data: { quantity: newQuantity },

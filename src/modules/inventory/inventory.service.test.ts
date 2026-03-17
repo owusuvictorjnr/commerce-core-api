@@ -146,6 +146,15 @@ describe("adjustInventory", () => {
     });
   });
 
+  it("throws 400 when resulting quantity would be less than reserved quantity", async () => {
+    productFindFirstMock.mockResolvedValue(makeProduct());
+    inventoryFindUniqueMock.mockResolvedValue(makeInventory({ quantity: 10, reservedQuantity: 8 }));
+    await expect(adjustInventory("tenant-1", "prod-1", { adjustment: -3 })).rejects.toMatchObject({
+      statusCode: 400,
+      code: "VALIDATION_ERROR",
+    });
+  });
+
   it("adjusts inventory quantity", async () => {
     productFindFirstMock.mockResolvedValue(makeProduct());
     inventoryFindUniqueMock.mockResolvedValue(makeInventory({ quantity: 10 }));
