@@ -25,7 +25,18 @@ const parsePositiveInt = (value: unknown): number | null => {
 
 const parseCreateProductBody = (body: CreateProductBody) => {
   const name = typeof body.name === "string" ? body.name.trim() : "";
-  const price = typeof body.price === "number" ? body.price : Number(body.price);
+  let price: number;
+  if (typeof body.price === "number") {
+    price = body.price;
+  } else if (typeof body.price === "string") {
+    const trimmedPrice = body.price.trim();
+    if (!trimmedPrice || !/^\d+(\.\d+)?$/.test(trimmedPrice)) {
+      throw new HttpError(400, "VALIDATION_ERROR", "Product price must be a non-negative number");
+    }
+    price = Number(trimmedPrice);
+  } else {
+    throw new HttpError(400, "VALIDATION_ERROR", "Product price must be a non-negative number");
+  }
   const description = typeof body.description === "string" ? body.description : undefined;
 
   if (!name) {

@@ -112,6 +112,48 @@ describe("productsRouter", () => {
     expect(response.body.error.code).toBe("VALIDATION_ERROR");
   });
 
+  it("returns 400 for POST /products when price is an empty string", async () => {
+    const deps = makeDeps();
+    const app = createTestApp(createProductsRouter(deps));
+
+    const response = await request(app)
+      .post("/")
+      .set(makeAuthHeaders())
+      .send({ name: "Gadget", price: "" });
+
+    expect(response.status).toBe(400);
+    expect(response.body.error.code).toBe("VALIDATION_ERROR");
+    expect(response.body.error.message).toBe("Product price must be a non-negative number");
+  });
+
+  it("returns 400 for POST /products when price is whitespace", async () => {
+    const deps = makeDeps();
+    const app = createTestApp(createProductsRouter(deps));
+
+    const response = await request(app)
+      .post("/")
+      .set(makeAuthHeaders())
+      .send({ name: "Gadget", price: "   " });
+
+    expect(response.status).toBe(400);
+    expect(response.body.error.code).toBe("VALIDATION_ERROR");
+    expect(response.body.error.message).toBe("Product price must be a non-negative number");
+  });
+
+  it("returns 400 for POST /products when price is a non-numeric string", async () => {
+    const deps = makeDeps();
+    const app = createTestApp(createProductsRouter(deps));
+
+    const response = await request(app)
+      .post("/")
+      .set(makeAuthHeaders())
+      .send({ name: "Gadget", price: "free" });
+
+    expect(response.status).toBe(400);
+    expect(response.body.error.code).toBe("VALIDATION_ERROR");
+    expect(response.body.error.message).toBe("Product price must be a non-negative number");
+  });
+
   it("returns 400 for POST /products when body is an array", async () => {
     const deps = makeDeps();
     const app = createTestApp(createProductsRouter(deps));
