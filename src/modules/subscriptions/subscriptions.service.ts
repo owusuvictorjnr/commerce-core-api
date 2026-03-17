@@ -106,11 +106,16 @@ export const updateSubscription = async (
     throw new HttpError(404, "NOT_FOUND", "Subscription not found");
   }
 
+  const updateData: Prisma.PreorderUpdateInput = {
+    ...(data.preorderStatus !== undefined ? { preorderStatus: data.preorderStatus } : {}),
+    ...(data.pickupDeadline !== undefined ? { pickupDeadline: data.pickupDeadline } : {}),
+  };
+  if (Object.keys(updateData).length === 0) {
+    throw new HttpError(400, "VALIDATION_ERROR", "At least one field must be provided to update");
+  }
+
   return prisma.preorder.update({
     where: { id },
-    data: {
-      ...(data.preorderStatus !== undefined ? { preorderStatus: data.preorderStatus } : {}),
-      ...(data.pickupDeadline !== undefined ? { pickupDeadline: data.pickupDeadline } : {}),
-    },
+    data: updateData,
   });
 };

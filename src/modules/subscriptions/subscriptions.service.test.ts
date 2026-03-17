@@ -174,6 +174,18 @@ describe("updateSubscription", () => {
     ).rejects.toMatchObject({ statusCode: 404, code: "NOT_FOUND" });
   });
 
+  it("throws 400 when no fields are provided for update", async () => {
+    preorderFindFirstMock.mockResolvedValue(makeSubscription());
+
+    await expect(updateSubscription("tenant-1", "sub-1", {})).rejects.toMatchObject({
+      statusCode: 400,
+      code: "VALIDATION_ERROR",
+      message: "At least one field must be provided to update",
+    });
+
+    expect(preorderUpdateMock).not.toHaveBeenCalled();
+  });
+
   it("updates subscription fields", async () => {
     preorderFindFirstMock.mockResolvedValue(makeSubscription());
     preorderUpdateMock.mockResolvedValue(makeSubscription({ preorderStatus: "READY_FOR_PICKUP" }));
