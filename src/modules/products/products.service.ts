@@ -41,6 +41,9 @@ export const createProduct = async (
   if (!input.name.trim()) {
     throw new HttpError(400, "VALIDATION_ERROR", "Product name is required");
   }
+  if (!Number.isFinite(input.price)) {
+    throw new HttpError(400, "VALIDATION_ERROR", "Product price must be a finite number");
+  }
   if (input.price < 0) {
     throw new HttpError(400, "VALIDATION_ERROR", "Product price must be non-negative");
   }
