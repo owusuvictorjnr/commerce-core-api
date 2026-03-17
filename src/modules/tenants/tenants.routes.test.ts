@@ -141,6 +141,20 @@ describe("tenantsRouter", () => {
     expect(response.body.error.code).toBe("VALIDATION_ERROR");
   });
 
+  it("PATCH /:id returns 400 when no updatable fields are provided", async () => {
+    const deps = makeDeps();
+    const app = createTestApp(createTenantsRouter(deps));
+    const response = await request(app)
+      .patch("/tenant-1")
+      .set(AUTH_HEADER, "Bearer any-token")
+      .send({});
+
+    expect(response.status).toBe(400);
+    expect(response.body.error.code).toBe("VALIDATION_ERROR");
+    expect(response.body.error.message).toBe("At least one updatable field must be provided");
+    expect(deps.updateTenant).not.toHaveBeenCalled();
+  });
+
   it("DELETE /:id deletes a tenant and returns 204", async () => {
     const deps = makeDeps();
     deps.deleteTenant.mockResolvedValue(undefined as never);

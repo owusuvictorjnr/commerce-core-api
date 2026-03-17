@@ -104,9 +104,18 @@ export const createTenantsRouter = (
       if (name !== undefined && (typeof name !== "string" || !name.trim())) {
         throw new HttpError(400, "VALIDATION_ERROR", "Tenant name must be a non-empty string");
       }
-      const tenant = await deps.updateTenant(id, {
-        ...(name !== undefined ? { name: name as string } : {}),
-      });
+      const updates: { name?: string } = {};
+      if (name !== undefined) {
+        updates.name = name as string;
+      }
+      if (Object.keys(updates).length === 0) {
+        throw new HttpError(
+          400,
+          "VALIDATION_ERROR",
+          "At least one updatable field must be provided",
+        );
+      }
+      const tenant = await deps.updateTenant(id, updates);
       res.status(200).json({ data: tenant });
     } catch (error) {
       next(error);
