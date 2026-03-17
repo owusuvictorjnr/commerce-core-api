@@ -30,6 +30,32 @@ const parseCursor = (value: unknown): string | null => {
   return value.trim();
 };
 
+const parseTenantUpdateBody = (body: unknown): { name?: string } => {
+  if (body === null || typeof body !== "object" || Array.isArray(body)) {
+    throw new HttpError(400, "VALIDATION_ERROR", "Request body must be a JSON object");
+  }
+
+  const record = body as Record<string, unknown>;
+  const name = record["name"];
+  if (name !== undefined && (typeof name !== "string" || !name.trim())) {
+    throw new HttpError(400, "VALIDATION_ERROR", "Tenant name must be a non-empty string");
+  }
+
+  const updates: { name?: string } = {};
+  if (name !== undefined) {
+    updates.name = name as string;
+  }
+  if (Object.keys(updates).length === 0) {
+    throw new HttpError(
+      400,
+      "VALIDATION_ERROR",
+      "At least one updatable field must be provided",
+    );
+  }
+
+  return updates;
+};
+
 export const createTenantsRouter = (
   deps: TenantsRouteDependencies = {
     createTenant,
@@ -95,26 +121,7 @@ export const createTenantsRouter = (
   tenantsRouter.patch("/:id", async (req: Request, res: Response, next: NextFunction) => {
     try {
       const id = (req.params["id"] as string) ?? "";
-      const body = req.body;
-      if (body === null || typeof body !== "object" || Array.isArray(body)) {
-        throw new HttpError(400, "VALIDATION_ERROR", "Request body must be a JSON object");
-      }
-      const record = body as Record<string, unknown>;
-      const name = record["name"];
-      if (name !== undefined && (typeof name !== "string" || !name.trim())) {
-        throw new HttpError(400, "VALIDATION_ERROR", "Tenant name must be a non-empty string");
-      }
-      const updates: { name?: string } = {};
-      if (name !== undefined) {
-        updates.name = name as string;
-      }
-      if (Object.keys(updates).length === 0) {
-        throw new HttpError(
-          400,
-          "VALIDATION_ERROR",
-          "At least one updatable field must be provided",
-        );
-      }
+      const updates = parseTenantUpdateBody(req.body);
       const tenant = await deps.updateTenant(id, updates);
       res.status(200).json({ data: tenant });
     } catch (error) {
