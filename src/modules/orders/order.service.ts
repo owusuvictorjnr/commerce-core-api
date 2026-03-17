@@ -100,6 +100,7 @@ export const createOrder = async (
     remainingAmount: totalAmount,
     items: {
       create: data.items.map((item) => ({
+        tenantId,
         productId: item.productId,
         quantity: item.quantity,
         price: item.price,
