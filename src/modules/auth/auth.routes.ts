@@ -14,15 +14,24 @@ type AuthBody = {
   password?: unknown;
 };
 
-const parseCredentials = (body: AuthBody): { email: string; password: string } => {
-  const email = typeof body.email === "string" ? body.email.trim() : "";
-  const password = typeof body.password === "string" ? body.password.trim() : "";
+const isPlainObject = (value: unknown): value is Record<string, unknown> => {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+};
 
-  if (!email || !password) {
+const parseCredentials = (body: unknown): { email: string; password: string } => {
+  if (!isPlainObject(body)) {
+    throw new HttpError(400, "VALIDATION_ERROR", "Request body must be a JSON object");
+  }
+
+  const { email, password } = body as AuthBody;
+  const parsedEmail = typeof email === "string" ? email.trim() : "";
+  const parsedPassword = typeof password === "string" ? password.trim() : "";
+
+  if (!parsedEmail || !parsedPassword) {
     throw new HttpError(400, "VALIDATION_ERROR", "Both email and password are required");
   }
 
-  return { email, password };
+  return { email: parsedEmail, password: parsedPassword };
 };
 
 export const createAuthRouter = (
@@ -32,7 +41,7 @@ export const createAuthRouter = (
 
   authRouter.post("/register", async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { email, password } = parseCredentials(req.body as AuthBody);
+      const { email, password } = parseCredentials(req.body);
       const result = await deps.registerUser(email, password);
 
       res.status(201).json({
@@ -45,7 +54,7 @@ export const createAuthRouter = (
 
   authRouter.post("/login", async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { email, password } = parseCredentials(req.body as AuthBody);
+      const { email, password } = parseCredentials(req.body);
       const result = await deps.loginUser(email, password);
 
       res.status(200).json({

@@ -48,6 +48,32 @@ describe("authRouter", () => {
     expect(response.body.error.code).toBe("VALIDATION_ERROR");
   });
 
+  it("returns 400 when register payload body is an array", async () => {
+    const deps = makeDeps();
+    const app = createTestApp(createAuthRouter(deps));
+
+    const response = await request(app)
+      .post("/register")
+      .send([{ email: "user@example.com", password: "password123" }]);
+
+    expect(response.status).toBe(400);
+    expect(response.body.error.code).toBe("VALIDATION_ERROR");
+    expect(response.body.error.message).toBe("Request body must be a JSON object");
+  });
+
+  it("returns 400 when login payload body is an array", async () => {
+    const deps = makeDeps();
+    const app = createTestApp(createAuthRouter(deps));
+
+    const response = await request(app)
+      .post("/login")
+      .send([{ email: "user@example.com", password: "password123" }]);
+
+    expect(response.status).toBe(400);
+    expect(response.body.error.code).toBe("VALIDATION_ERROR");
+    expect(response.body.error.message).toBe("Request body must be a JSON object");
+  });
+
   it("registers a user and returns token", async () => {
     const deps = makeDeps();
     deps.registerUser.mockResolvedValue({
