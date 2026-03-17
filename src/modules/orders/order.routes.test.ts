@@ -195,6 +195,8 @@ describe("ordersRouter", () => {
       paidAmount: 0,
       remainingAmount: 100,
       status: "PENDING",
+      items: [],
+      payments: [],
       createdAt: new Date(),
       updatedAt: new Date(),
     });

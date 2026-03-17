@@ -24,6 +24,13 @@ type GetOrdersOptions = {
 
 type OrderRow = Prisma.OrderGetPayload<Record<string, never>>;
 
+type OrderWithItemsAndPayments = Prisma.OrderGetPayload<{
+  include: {
+    items: true;
+    payments: true;
+  };
+}>;
+
 type GetOrdersResult = {
   items: OrderRow[];
   nextCursor: string | null;
@@ -141,12 +148,15 @@ export const getOrders = async (
   };
 };
 
-export const getOrderById = async (tenantId: string, id: string): Promise<OrderRow | null> => {
+export const getOrderById = async (
+  tenantId: string,
+  id: string,
+): Promise<OrderWithItemsAndPayments | null> => {
   const prisma = getPrismaClient();
   return prisma.order.findFirst({
     where: { id, tenantId },
     include: { items: true, payments: true },
-  }) as Promise<OrderRow | null>;
+  });
 };
 
 export const updateOrderStatus = async (
