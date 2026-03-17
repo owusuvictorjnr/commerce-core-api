@@ -35,4 +35,17 @@ describe("users.service", () => {
       code: "NOT_FOUND",
     } satisfies Partial<HttpError>);
   });
+
+  it("evicts oldest profile when capacity is exceeded", async () => {
+    for (let index = 0; index <= 1000; index += 1) {
+      const userId = `user-${index}`;
+      getOrCreateProfile(userId, `${userId}@example.com`);
+    }
+
+    const firstProfile = await getUserById("user-0");
+    const lastProfile = await getUserById("user-1000");
+
+    expect(firstProfile).toBeNull();
+    expect(lastProfile).not.toBeNull();
+  });
 });

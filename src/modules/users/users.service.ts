@@ -11,13 +11,24 @@ type UpdateUserInput = {
   name?: string;
 };
 
+const MAX_PROFILES = 1000;
 const profilesById = new Map<string, UserProfile>();
+
+const ensureCapacity = (): void => {
+  if (profilesById.size >= MAX_PROFILES) {
+    const firstKey = profilesById.keys().next().value as string | undefined;
+    if (firstKey !== undefined) {
+      profilesById.delete(firstKey);
+    }
+  }
+};
 
 export const getOrCreateProfile = (userId: string, email: string): UserProfile => {
   const existing = profilesById.get(userId);
   if (existing) return existing;
 
   const profile: UserProfile = { id: userId, email, name: "" };
+  ensureCapacity();
   profilesById.set(userId, profile);
   return profile;
 };
@@ -41,6 +52,7 @@ export const updateUser = async (
   if (input.name !== undefined) {
     updated.name = input.name;
   }
+  ensureCapacity();
   profilesById.set(userId, updated);
 
   await hookManager.run("user.afterProfileUpdate", updated);
