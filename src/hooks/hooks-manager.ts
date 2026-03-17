@@ -3,6 +3,10 @@ import type { Order, Prisma } from "@prisma/client";
 export interface HookPayloadMap {
   "order.beforeCreated": Prisma.OrderCreateInput;
   "order.afterCreated": Order;
+  "user.beforeProfileUpdate": { userId: string; input: { name?: string } };
+  "user.afterProfileUpdate": { id: string; email: string; name: string };
+  "payment.beforeProcess": { paymentId: string; orderId: number; tenantId: string; amount: number };
+  "payment.afterProcess": { paymentId: string; orderId: number; tenantId: string; amount: number; status: string };
 }
 
 type HookFn<T> = (payload: T) => Promise<void> | void;
