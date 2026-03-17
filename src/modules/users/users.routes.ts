@@ -14,6 +14,24 @@ type UpdateUserBody = {
   name?: unknown;
 };
 
+const validateUpdateUserBody = (body: unknown): { name?: string } => {
+  if (body === null || typeof body !== "object" || Array.isArray(body)) {
+    throw new HttpError(400, "VALIDATION_ERROR", "Request body must be an object");
+  }
+
+  if (Object.prototype.hasOwnProperty.call(body, "name") && typeof body.name !== "string") {
+    throw new HttpError(400, "VALIDATION_ERROR", "Name must be a string");
+  }
+
+  const typedBody = body as UpdateUserBody;
+  const name = typeof typedBody.name === "string" ? typedBody.name.trim() : undefined;
+  if (name !== undefined && name.length === 0) {
+    throw new HttpError(400, "VALIDATION_ERROR", "Name cannot be empty");
+  }
+
+  return { name };
+};
+
 export const createUsersRouter = (
   deps: UserRouteDependencies = { getUserById, updateUser, getOrCreateProfile },
 ) => {
@@ -40,21 +58,7 @@ export const createUsersRouter = (
   usersRouter.patch("/me", async (req: Request, res: Response, next: NextFunction) => {
     try {
       const auth = res.locals["auth"] as { userId: string; email: string };
-      const body = req.body;
-
-      if (body === null || typeof body !== "object" || Array.isArray(body)) {
-        throw new HttpError(400, "VALIDATION_ERROR", "Request body must be an object");
-      }
-
-      if (Object.prototype.hasOwnProperty.call(body, "name") && typeof body.name !== "string") {
-        throw new HttpError(400, "VALIDATION_ERROR", "Name must be a string");
-      }
-
-      const typedBody = body as UpdateUserBody;
-      const name = typeof typedBody.name === "string" ? typedBody.name.trim() : undefined;
-      if (name !== undefined && name.length === 0) {
-        throw new HttpError(400, "VALIDATION_ERROR", "Name cannot be empty");
-      }
+      const { name } = validateUpdateUserBody(req.body);
 
       // Lazily create profile if this is the first interaction
       if (!(await deps.getUserById(auth.userId))) {
