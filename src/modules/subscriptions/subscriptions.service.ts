@@ -60,7 +60,7 @@ export const listSubscriptions = async (
         tenantId,
       },
     },
-    orderBy: { createdAt: "asc" },
+    orderBy: { id: "asc" },
     take: pageSize + 1,
     ...(options.cursor ? { cursor: { id: options.cursor }, skip: 1 } : {}),
   });

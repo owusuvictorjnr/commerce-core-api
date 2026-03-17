@@ -101,6 +101,15 @@ describe("listSubscriptions", () => {
     const result = await listSubscriptions("tenant-1", { limit: 2 });
     expect(result.items).toHaveLength(2);
     expect(result.nextCursor).toBe("sub-2");
+    expect(preorderFindManyMock).toHaveBeenCalledWith({
+      where: {
+        order: {
+          tenantId: "tenant-1",
+        },
+      },
+      orderBy: { id: "asc" },
+      take: 3,
+    });
   });
 });
 
