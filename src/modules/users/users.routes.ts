@@ -38,10 +38,13 @@ export const createUsersRouter = (
   });
 
   usersRouter.patch("/me", async (req: Request, res: Response, next: NextFunction) => {
-    void req;
     try {
       const auth = res.locals["auth"] as { userId: string; email: string };
       const body = req.body as UpdateUserBody;
+
+      if (body && Object.prototype.hasOwnProperty.call(body, "name") && typeof body.name !== "string") {
+        throw new HttpError(400, "VALIDATION_ERROR", "Name must be a string");
+      }
 
       const name = typeof body.name === "string" ? body.name.trim() : undefined;
       if (name !== undefined && name.length === 0) {

@@ -91,6 +91,21 @@ describe("usersRouter", () => {
     expect(response.body.error.code).toBe("VALIDATION_ERROR");
   });
 
+  it("returns 400 for PATCH /me when name is not a string", async () => {
+    const deps = makeDeps();
+    const app = createTestApp(createUsersRouter(deps));
+
+    const response = await request(app)
+      .patch("/me")
+      .set(AUTH_HEADER, "Bearer any-token")
+      .set(USER_ID_HEADER, "user-1")
+      .send({ name: 123 });
+
+    expect(response.status).toBe(400);
+    expect(response.body.error.code).toBe("VALIDATION_ERROR");
+    expect(response.body.error.message).toBe("Name must be a string");
+  });
+
   it("updates and returns user profile for PATCH /me", async () => {
     const deps = makeDeps();
     deps.getUserById.mockResolvedValue({ id: "user-1", email: "alice@example.com", name: "" });
