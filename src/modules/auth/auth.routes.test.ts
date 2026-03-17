@@ -36,6 +36,18 @@ describe("authRouter", () => {
     expect(response.body.error.code).toBe("VALIDATION_ERROR");
   });
 
+  it("returns 400 when register payload password is whitespace-only", async () => {
+    const deps = makeDeps();
+    const app = createTestApp(createAuthRouter(deps));
+
+    const response = await request(app)
+      .post("/register")
+      .send({ email: "user@example.com", password: "   " });
+
+    expect(response.status).toBe(400);
+    expect(response.body.error.code).toBe("VALIDATION_ERROR");
+  });
+
   it("registers a user and returns token", async () => {
     const deps = makeDeps();
     deps.registerUser.mockResolvedValue({
