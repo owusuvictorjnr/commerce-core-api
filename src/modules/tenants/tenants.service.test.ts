@@ -51,6 +51,7 @@ describe("createTenant", () => {
 
 describe("getTenants", () => {
   beforeEach(() => {
+    findUniqueMock.mockReset();
     findManyMock.mockReset();
   });
 
@@ -69,6 +70,31 @@ describe("getTenants", () => {
     findManyMock.mockResolvedValue([makeTenant({ id: "1", name: "A" })]);
     const result = await getTenants({ limit: 2 });
     expect(result.nextCursor).toBeNull();
+  });
+
+  it("throws 400 when cursor is invalid", async () => {
+    findUniqueMock.mockResolvedValue(null);
+
+    await expect(getTenants({ cursor: "missing-cursor" })).rejects.toMatchObject({
+      statusCode: 400,
+      message: "Invalid cursor",
+    });
+
+    expect(findManyMock).not.toHaveBeenCalled();
+  });
+
+  it("applies cursor pagination when cursor is valid", async () => {
+    findUniqueMock.mockResolvedValue(makeTenant({ id: "tenant-2" }));
+    findManyMock.mockResolvedValue([makeTenant({ id: "tenant-3", name: "C" })]);
+
+    await getTenants({ limit: 2, cursor: "tenant-2" });
+
+    expect(findManyMock).toHaveBeenCalledWith({
+      orderBy: { id: "asc" },
+      take: 3,
+      cursor: { id: "tenant-2" },
+      skip: 1,
+    });
   });
 });
 

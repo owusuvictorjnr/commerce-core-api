@@ -21,6 +21,12 @@ export const createTenant = async (data: { name: string }) => {
 export const getTenants = async (options: GetTenantsOptions = {}) => {
   const prisma = getPrismaClient();
   const pageSize = Math.min(Math.max(options.limit ?? DEFAULT_PAGE_SIZE, 1), MAX_PAGE_SIZE);
+  if (options.cursor) {
+    const cursorTenant = await prisma.tenant.findUnique({ where: { id: options.cursor } });
+    if (!cursorTenant) {
+      throw new HttpError(400, "VALIDATION_ERROR", "Invalid cursor");
+    }
+  }
   const items = await prisma.tenant.findMany({
     orderBy: { id: "asc" },
     take: pageSize + 1,
