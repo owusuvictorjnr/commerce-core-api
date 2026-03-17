@@ -86,9 +86,7 @@ describe("email.service", () => {
     const service = getEmailService();
     await service.sendWelcomeEmail("user@example.com");
 
-    expect(loggerWarn).toHaveBeenCalledWith(
-      "Email integration disabled (noop provider)",
-      { email: "user@example.com" },
-    );
+    expect(loggerInfo).toHaveBeenCalledWith("Email integration disabled (noop provider)");
+    expect(loggerWarn).not.toHaveBeenCalled();
   });
 });

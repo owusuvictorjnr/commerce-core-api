@@ -35,7 +35,7 @@ class ConsoleEmailService implements EmailService {
 
 class NoopEmailService implements EmailService {
   async sendWelcomeEmail(email: string): Promise<void> {
-    logger.warn("Email integration disabled (noop provider)", { email });
+    void email;
   }
 }
 
@@ -61,6 +61,7 @@ export const resolveEmailServiceConfig = (
 
 const createEmailService = (config: EmailServiceConfig): EmailService => {
   if (config.provider === "noop") {
+    logger.info("Email integration disabled (noop provider)");
     return new NoopEmailService();
   }
 
