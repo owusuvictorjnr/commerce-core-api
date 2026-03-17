@@ -69,6 +69,45 @@ describe("authMiddleware", () => {
 		expect(response.body.error.message).toContain("subject");
 	});
 
+	it("returns 401 when subject claim is not a string", async () => {
+		const app = createTestApp();
+		const token = createToken({ sub: 123, email: "user@example.com" });
+
+		const response = await request(app)
+			.get("/")
+			.set("Authorization", `Bearer ${token}`);
+
+		expect(response.status).toBe(401);
+		expect(response.body.error.code).toBe("UNAUTHORIZED");
+		expect(response.body.error.message).toContain("subject");
+	});
+
+	it("returns 401 when subject claim is whitespace only", async () => {
+		const app = createTestApp();
+		const token = createToken({ sub: "   ", email: "user@example.com" });
+
+		const response = await request(app)
+			.get("/")
+			.set("Authorization", `Bearer ${token}`);
+
+		expect(response.status).toBe(401);
+		expect(response.body.error.code).toBe("UNAUTHORIZED");
+		expect(response.body.error.message).toContain("subject");
+	});
+
+	it("returns 401 when userId claim is not a string", async () => {
+		const app = createTestApp();
+		const token = createToken({ userId: { id: "user-2" }, email: "user2@example.com" });
+
+		const response = await request(app)
+			.get("/")
+			.set("Authorization", `Bearer ${token}`);
+
+		expect(response.status).toBe(401);
+		expect(response.body.error.code).toBe("UNAUTHORIZED");
+		expect(response.body.error.message).toContain("subject");
+	});
+
 	it("returns 401 when token lacks email claim", async () => {
 		const app = createTestApp();
 		const token = createToken({ sub: "user-1" });
@@ -146,5 +185,18 @@ describe("authMiddleware", () => {
 		expect(response.status).toBe(200);
 		expect(response.body.auth.userId).toBe("user-2");
 		expect(response.body.auth.email).toBe("user2@example.com");
+	});
+
+	it("returns 200 and trims userId claim", async () => {
+		const app = createTestApp();
+		const token = createToken({ userId: "  user-3  ", email: "user3@example.com" });
+
+		const response = await request(app)
+			.get("/")
+			.set("Authorization", `Bearer ${token}`);
+
+		expect(response.status).toBe(200);
+		expect(response.body.auth.userId).toBe("user-3");
+		expect(response.body.auth.email).toBe("user3@example.com");
 	});
 });

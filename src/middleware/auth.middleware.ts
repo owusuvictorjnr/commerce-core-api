@@ -46,10 +46,11 @@ const verifyAndExtractAuthClaims = (token: string): { userId: string; email: str
 		}
 
 		const payload = decoded as JwtPayload;
-		const userId = (payload.sub ?? payload["userId"]) as string | undefined;
-		if (!userId) {
+		const rawUserId = payload.sub ?? payload["userId"];
+		if (typeof rawUserId !== "string" || rawUserId.trim() === "") {
 			throw new HttpError(401, "UNAUTHORIZED", "Authentication token missing required subject");
 		}
+		const userId = rawUserId.trim();
 
 		const rawEmail = payload["email"];
 		if (typeof rawEmail !== "string" || rawEmail.trim() === "") {
