@@ -74,7 +74,12 @@ export const createProductsRouter = (
   productsRouter.post("/", async (req: Request, res: Response, next: NextFunction) => {
     try {
       const tenantId = res.locals["tenantId"] as string;
-      const { name, price, description } = parseCreateProductBody(req.body as CreateProductBody);
+      const body = req.body;
+      if (body === null || typeof body !== "object" || Array.isArray(body)) {
+        throw new HttpError(400, "VALIDATION_ERROR", "Request body must be a JSON object");
+      }
+
+      const { name, price, description } = parseCreateProductBody(body as CreateProductBody);
 
       const product = await deps.createProduct(tenantId, {
         name,

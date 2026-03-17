@@ -112,6 +112,20 @@ describe("productsRouter", () => {
     expect(response.body.error.code).toBe("VALIDATION_ERROR");
   });
 
+  it("returns 400 for POST /products when body is an array", async () => {
+    const deps = makeDeps();
+    const app = createTestApp(createProductsRouter(deps));
+
+    const response = await request(app)
+      .post("/")
+      .set(makeAuthHeaders())
+      .send([{ name: "Product" }]);
+
+    expect(response.status).toBe(400);
+    expect(response.body.error.code).toBe("VALIDATION_ERROR");
+    expect(response.body.error.message).toBe("Request body must be a JSON object");
+  });
+
   it("creates a product for POST /products", async () => {
     const deps = makeDeps();
     deps.createProduct.mockResolvedValue({
