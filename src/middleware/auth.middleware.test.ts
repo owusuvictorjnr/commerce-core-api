@@ -199,4 +199,32 @@ describe("authMiddleware", () => {
 		expect(response.body.auth.userId).toBe("user-3");
 		expect(response.body.auth.email).toBe("user3@example.com");
 	});
+
+	it("uses trimmed bypass headers and fallback email when bypass email is blank", async () => {
+		const app = createTestApp();
+		process.env["AUTH_BYPASS"] = "true";
+
+		const response = await request(app)
+			.get("/")
+			.set("Authorization", "Bearer bypass-token")
+			.set("x-user-id", "  user-4  ")
+			.set("x-user-email", "   ");
+
+		expect(response.status).toBe(200);
+		expect(response.body.auth.userId).toBe("user-4");
+		expect(response.body.auth.email).toBe("user-4@example.test");
+	});
+
+	it("uses anonymous bypass identity when user id header is missing", async () => {
+		const app = createTestApp();
+		process.env["AUTH_BYPASS"] = "true";
+
+		const response = await request(app)
+			.get("/")
+			.set("Authorization", "Bearer bypass-token");
+
+		expect(response.status).toBe(200);
+		expect(response.body.auth.userId).toBe("anonymous");
+		expect(response.body.auth.email).toBe("anonymous@example.test");
+	});
 });

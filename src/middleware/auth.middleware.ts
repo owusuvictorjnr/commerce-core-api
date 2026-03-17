@@ -73,17 +73,22 @@ const verifyAndExtractAuthClaims = (token: string): { userId: string; email: str
 	}
 };
 
+const extractBypassClaims = (req: Request): { userId: string; email: string } => {
+	const rawUserId = req.header(USER_ID_HEADER);
+	const rawEmail = req.header(USER_EMAIL_HEADER);
+	const userId = (rawUserId ?? "anonymous").trim() || "anonymous";
+	const trimmedEmail = (rawEmail ?? "").trim();
+	const email = trimmedEmail || `${userId}@example.test`;
+
+	return { userId, email };
+};
+
 export const authMiddleware = (req: Request, res: Response, next: NextFunction): void => {
 	try {
 		const token = getTokenFromHeader(req);
 		const bypassEnabled = isBypassEnabled();
 
-		const claims = bypassEnabled
-			? {
-					userId: req.header(USER_ID_HEADER) ?? "anonymous",
-					email: req.header(USER_EMAIL_HEADER) ?? "",
-				}
-			: verifyAndExtractAuthClaims(token);
+		const claims = bypassEnabled ? extractBypassClaims(req) : verifyAndExtractAuthClaims(token);
 
 		const auth: AuthContext = {
 			token,
