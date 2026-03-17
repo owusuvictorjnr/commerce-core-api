@@ -91,7 +91,7 @@ describe("products.service", () => {
         price: 3,
       }),
     ).rejects.toMatchObject({
-      statusCode: 400,
+      statusCode: 503,
       code: "RESOURCE_LIMIT_EXCEEDED",
     } satisfies Partial<HttpError>);
   });

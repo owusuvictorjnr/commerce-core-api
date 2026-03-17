@@ -54,7 +54,7 @@ const validateStoreCapacity = (tenantId: string, existingProductsCount: number):
 
   if (existingProductsCount >= maxProductsPerTenant) {
     throw new HttpError(
-      400,
+      503,
       "RESOURCE_LIMIT_EXCEEDED",
       "Per-tenant in-memory product limit reached. This storage is non-production and bounded.",
     );
