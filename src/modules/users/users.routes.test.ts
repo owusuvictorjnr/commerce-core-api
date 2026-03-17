@@ -4,6 +4,9 @@ import { jest } from "@jest/globals";
 import { createUsersRouter } from "./users.routes.js";
 import { errorMiddleware } from "../../middleware/error.middleware.js";
 import type { getUserById, updateUser, getOrCreateProfile } from "./users.service.js";
+import { __resetUsersForTests, getOrCreateProfile as seedProfile } from "./users.service.js";
+
+import "../../hooks/users.hooks.js";
 
 const AUTH_HEADER = "Authorization";
 const USER_ID_HEADER = "x-user-id";
@@ -103,5 +106,21 @@ describe("usersRouter", () => {
     expect(response.status).toBe(200);
     expect(response.body.data.name).toBe("Alice");
     expect(deps.updateUser).toHaveBeenCalledWith("user-1", { name: "Alice" });
+  });
+
+  it("returns 400 for PATCH /me with name longer than 100 chars (hook validation)", async () => {
+    __resetUsersForTests();
+    seedProfile("user-oversize", "oversize@example.com");
+    const app = createTestApp(createUsersRouter());
+
+    const response = await request(app)
+      .patch("/me")
+      .set(AUTH_HEADER, "Bearer any-token")
+      .set(USER_ID_HEADER, "user-oversize")
+      .send({ name: "x".repeat(101) });
+
+    expect(response.status).toBe(400);
+    expect(response.body.error.code).toBe("VALIDATION_ERROR");
+    expect(response.body.error.message).toContain("must not exceed 100 characters");
   });
 });
