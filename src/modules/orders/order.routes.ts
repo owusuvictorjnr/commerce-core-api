@@ -62,6 +62,18 @@ const parsePositiveInt = (value: unknown): number | null => {
   return parsed;
 };
 
+const parseCursor = (value: unknown): string | null => {
+  if (value === undefined) {
+    return null;
+  }
+
+  if (typeof value !== "string" || value.trim() === "") {
+    return null;
+  }
+
+  return value.trim();
+};
+
 export const createOrdersRouter = (
   deps: OrdersRouteDependencies = { createOrder, getOrders },
 ) => {
@@ -72,11 +84,11 @@ export const createOrdersRouter = (
 
   ordersRouter.get("/", async (req: Request, res: Response, next: NextFunction) => {
     const limit = parsePositiveInt(req.query["limit"]);
-    const cursor = parsePositiveInt(req.query["cursor"]);
+    const cursor = parseCursor(req.query["cursor"]);
 
     if ((req.query["limit"] !== undefined && limit === null) ||
         (req.query["cursor"] !== undefined && cursor === null)) {
-      next(new HttpError(400, "VALIDATION_ERROR", "Query parameters 'limit' and 'cursor' must be positive integers"));
+      next(new HttpError(400, "VALIDATION_ERROR", "Query parameter 'limit' must be a positive integer and 'cursor' must be a non-empty string"));
       return;
     }
 

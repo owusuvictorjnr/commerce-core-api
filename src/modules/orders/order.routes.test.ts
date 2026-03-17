@@ -53,8 +53,20 @@ describe("ordersRouter", () => {
   it("returns paginated tenant orders", async () => {
     const deps = makeDeps();
     deps.getOrders.mockResolvedValue({
-      items: [{ id: 1, tenantId: "tenant-1", items: [], createdAt: new Date(), updatedAt: new Date() }],
-      nextCursor: 1,
+      items: [
+        {
+          id: "1",
+          tenantId: "tenant-1",
+          userId: "user-1",
+          totalAmount: 100,
+          paidAmount: 0,
+          remainingAmount: 100,
+          status: "PENDING",
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      ],
+      nextCursor: "1",
     });
     const router = express.Router();
     router.use("/orders", createOrdersRouter(deps));
@@ -65,16 +77,20 @@ describe("ordersRouter", () => {
       .set("x-tenant-id", "tenant-1");
 
     expect(response.status).toBe(200);
-    expect(response.body.pagination.nextCursor).toBe(1);
+    expect(response.body.pagination.nextCursor).toBe("1");
     expect(deps.getOrders).toHaveBeenCalledWith("tenant-1", { limit: 1 });
   });
 
   it("creates order for tenant", async () => {
     const deps = makeDeps();
     deps.createOrder.mockResolvedValue({
-      id: 3,
+      id: "3",
       tenantId: "tenant-9",
-      items: [{ sku: "A-01", qty: 2 }],
+      userId: "user-9",
+      totalAmount: 100,
+      paidAmount: 0,
+      remainingAmount: 100,
+      status: "PENDING",
       createdAt: new Date(),
       updatedAt: new Date(),
     });
@@ -116,7 +132,7 @@ describe("ordersRouter", () => {
     router.use("/orders", createOrdersRouter(deps));
     const app = createTestApp(router);
     const response = await request(app)
-      .get("/orders?cursor=abc")
+      .get("/orders?cursor=")
       .set("Authorization", "Bearer test-token")
       .set("x-tenant-id", "tenant-1");
 

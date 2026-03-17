@@ -11,14 +11,14 @@ const MAX_PAGE_SIZE = 100;
 
 type GetOrdersOptions = {
   limit?: number;
-  cursor?: number;
+  cursor?: string;
 };
 
 type OrderRow = Prisma.OrderGetPayload<Record<string, never>>;
 
 type GetOrdersResult = {
   items: OrderRow[];
-  nextCursor: number | null;
+  nextCursor: string | null;
 };
 
 const mapCursorQueryError = (error: unknown): never => {
@@ -62,10 +62,13 @@ const findOrdersWithCursorHandling = async (
 
 export const createOrder = async (
   tenantId: string,
-  data: Omit<Prisma.OrderCreateInput, "tenantId">,
+  data: { items: Prisma.InputJsonArray },
 ) => {
   const prisma = getPrismaClient();
-  const payload: Prisma.OrderCreateInput = { ...data, tenantId };
+  const payload = {
+    ...(data as unknown as Prisma.OrderCreateInput),
+    tenant: { connect: { id: tenantId } },
+  } as Prisma.OrderCreateInput;
 
   // Before Hooks
   await hookManager.run("order.beforeCreated", payload);
