@@ -133,4 +133,20 @@ describe("subscriptionsRouter", () => {
     expect(response.status).toBe(400);
     expect(response.body.error.code).toBe("VALIDATION_ERROR");
   });
+
+  it("PATCH /:id returns 400 when no updatable fields are provided", async () => {
+    const deps = makeDeps();
+    const app = createTestApp(createSubscriptionsRouter(deps));
+    const response = await request(app)
+      .patch("/sub-1")
+      .set(makeAuthHeaders())
+      .send({});
+
+    expect(response.status).toBe(400);
+    expect(response.body.error.code).toBe("VALIDATION_ERROR");
+    expect(response.body.error.message).toBe(
+      "At least one of 'preorderStatus' or 'pickupDeadline' must be provided",
+    );
+    expect(deps.updateSubscription).not.toHaveBeenCalled();
+  });
 });

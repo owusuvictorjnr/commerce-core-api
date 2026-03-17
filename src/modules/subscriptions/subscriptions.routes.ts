@@ -168,6 +168,15 @@ export const createSubscriptionsRouter = (
       const tenantId = res.locals["tenantId"] as string;
       const id = (req.params["id"] as string) ?? "";
       const parsed = parseUpdateSubscriptionBody(req.body);
+      const hasPreorderStatus = parsed.preorderStatus !== undefined && parsed.preorderStatus !== null;
+      const hasPickupDeadline = parsed.pickupDeadline !== undefined && parsed.pickupDeadline !== null;
+      if (!hasPreorderStatus && !hasPickupDeadline) {
+        throw new HttpError(
+          400,
+          "VALIDATION_ERROR",
+          "At least one of 'preorderStatus' or 'pickupDeadline' must be provided",
+        );
+      }
       const updated = await deps.updateSubscription(tenantId, id, parsed);
       res.status(200).json({ data: updated });
     } catch (error) {
