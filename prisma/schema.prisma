@@ -94,6 +94,7 @@ model Product {
   updatedAt   DateTime @updatedAt
 
   @@index([tenantId])
+  @@unique([tenantId, id])
 }
 
 ///////////////////////
@@ -103,12 +104,12 @@ model Product {
 model Inventory {
   id               String   @id @default(uuid())
   tenantId         String
-  productId        String   @unique
+  productId        String
   quantity         Int
   reservedQuantity Int      @default(0)
 
   tenant           Tenant   @relation(fields: [tenantId], references: [id])
-  product          Product  @relation(fields: [productId], references: [id])
+  product          Product  @relation(fields: [tenantId, productId], references: [tenantId, id])
 
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
