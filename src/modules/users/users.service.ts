@@ -37,7 +37,10 @@ export const updateUser = async (
 
   await hookManager.run("user.beforeProfileUpdate", { userId, input });
 
-  const updated: UserProfile = { ...profile, ...input };
+  const updated: UserProfile = { ...profile };
+  if (input.name !== undefined) {
+    updated.name = input.name;
+  }
   profilesById.set(userId, updated);
 
   await hookManager.run("user.afterProfileUpdate", updated);
