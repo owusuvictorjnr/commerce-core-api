@@ -19,17 +19,17 @@ const validateUpdateUserBody = (body: unknown): { name?: string } => {
     throw new HttpError(400, "VALIDATION_ERROR", "Request body must be an object");
   }
 
-  if (Object.prototype.hasOwnProperty.call(body, "name") && typeof body.name !== "string") {
+  const typedBody = body as UpdateUserBody;
+  if (Object.prototype.hasOwnProperty.call(typedBody, "name") && typeof typedBody.name !== "string") {
     throw new HttpError(400, "VALIDATION_ERROR", "Name must be a string");
   }
 
-  const typedBody = body as UpdateUserBody;
   const name = typeof typedBody.name === "string" ? typedBody.name.trim() : undefined;
   if (name !== undefined && name.length === 0) {
     throw new HttpError(400, "VALIDATION_ERROR", "Name cannot be empty");
   }
 
-  return { name };
+  return name !== undefined ? { name } : {};
 };
 
 export const createUsersRouter = (
