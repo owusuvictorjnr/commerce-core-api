@@ -1,5 +1,10 @@
 import { HttpError } from "../../core/errors/http-error.js";
-import { __resetProductsForTests, createProduct, getProducts } from "./products.service.js";
+import {
+  __resetProductsForTests,
+  __setProductStoreLimitsForTests,
+  createProduct,
+  getProducts,
+} from "./products.service.js";
 
 describe("products.service", () => {
   beforeEach(() => {
@@ -54,6 +59,40 @@ describe("products.service", () => {
       statusCode: 400,
       code: "VALIDATION_ERROR",
       message: "Product price must be non-negative",
+    } satisfies Partial<HttpError>);
+  });
+
+  it("rejects creating a new tenant when tenant capacity is reached", async () => {
+    __setProductStoreLimitsForTests({ maxTenants: 2 });
+
+    await createProduct("tenant-1", { name: "Widget 1", price: 1 });
+    await createProduct("tenant-2", { name: "Widget 2", price: 2 });
+
+    await expect(
+      createProduct("tenant-3", {
+        name: "Widget 3",
+        price: 3,
+      }),
+    ).rejects.toMatchObject({
+      statusCode: 503,
+      code: "RESOURCE_LIMIT_EXCEEDED",
+    } satisfies Partial<HttpError>);
+  });
+
+  it("rejects creating a product when per-tenant capacity is reached", async () => {
+    __setProductStoreLimitsForTests({ maxProductsPerTenant: 2 });
+
+    await createProduct("tenant-1", { name: "Widget 1", price: 1 });
+    await createProduct("tenant-1", { name: "Widget 2", price: 2 });
+
+    await expect(
+      createProduct("tenant-1", {
+        name: "Widget 3",
+        price: 3,
+      }),
+    ).rejects.toMatchObject({
+      statusCode: 400,
+      code: "RESOURCE_LIMIT_EXCEEDED",
     } satisfies Partial<HttpError>);
   });
 

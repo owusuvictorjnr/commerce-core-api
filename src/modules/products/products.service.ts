@@ -28,11 +28,38 @@ type GetProductsResult = {
 
 const DEFAULT_PAGE_SIZE = 20;
 const MAX_PAGE_SIZE = 100;
+const DEFAULT_MAX_TENANTS = 1000;
+const DEFAULT_MAX_PRODUCTS_PER_TENANT = 10000;
 
+let maxTenants = DEFAULT_MAX_TENANTS;
+let maxProductsPerTenant = DEFAULT_MAX_PRODUCTS_PER_TENANT;
+
+// In-memory, non-durable product storage.
+// NOTE: This is suitable only for tests/development and is explicitly bounded.
+// For production, use a persistent store (e.g., the database via Prisma).
 const productsByTenant = new Map<string, Product[]>();
 
 const getAllForTenant = (tenantId: string): Product[] =>
   productsByTenant.get(tenantId) ?? [];
+
+const validateStoreCapacity = (tenantId: string, existingProductsCount: number): void => {
+  const isNewTenant = existingProductsCount === 0 && !productsByTenant.has(tenantId);
+  if (isNewTenant && productsByTenant.size >= maxTenants) {
+    throw new HttpError(
+      503,
+      "RESOURCE_LIMIT_EXCEEDED",
+      "In-memory product store tenant limit reached. This storage is non-production and bounded.",
+    );
+  }
+
+  if (existingProductsCount >= maxProductsPerTenant) {
+    throw new HttpError(
+      400,
+      "RESOURCE_LIMIT_EXCEEDED",
+      "Per-tenant in-memory product limit reached. This storage is non-production and bounded.",
+    );
+  }
+};
 
 export const createProduct = async (
   tenantId: string,
@@ -58,6 +85,7 @@ export const createProduct = async (
   };
 
   const existing = getAllForTenant(tenantId);
+  validateStoreCapacity(tenantId, existing.length);
   productsByTenant.set(tenantId, [...existing, product]);
 
   return product;
@@ -97,4 +125,18 @@ export const getProductById = async (
 /** Reset in-memory store — tests only */
 export const __resetProductsForTests = (): void => {
   productsByTenant.clear();
+  maxTenants = DEFAULT_MAX_TENANTS;
+  maxProductsPerTenant = DEFAULT_MAX_PRODUCTS_PER_TENANT;
+};
+
+export const __setProductStoreLimitsForTests = (limits: {
+  maxTenants?: number;
+  maxProductsPerTenant?: number;
+}): void => {
+  if (limits.maxTenants !== undefined) {
+    maxTenants = limits.maxTenants;
+  }
+  if (limits.maxProductsPerTenant !== undefined) {
+    maxProductsPerTenant = limits.maxProductsPerTenant;
+  }
 };
