@@ -52,7 +52,6 @@ export const updateUser = async (
   if (input.name !== undefined) {
     updated.name = input.name;
   }
-  ensureCapacity();
   profilesById.set(userId, updated);
 
   await hookManager.run("user.afterProfileUpdate", updated);

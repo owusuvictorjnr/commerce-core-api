@@ -48,4 +48,19 @@ describe("users.service", () => {
     expect(firstProfile).toBeNull();
     expect(lastProfile).not.toBeNull();
   });
+
+  it("does not evict unrelated profiles when updating at capacity", async () => {
+    for (let index = 0; index < 1000; index += 1) {
+      const userId = `user-${index}`;
+      getOrCreateProfile(userId, `${userId}@example.com`);
+    }
+
+    await updateUser("user-999", { name: "Updated" });
+
+    const firstProfile = await getUserById("user-0");
+    const updatedProfile = await getUserById("user-999");
+
+    expect(firstProfile).not.toBeNull();
+    expect(updatedProfile?.name).toBe("Updated");
+  });
 });
