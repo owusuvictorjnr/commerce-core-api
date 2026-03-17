@@ -1,5 +1,5 @@
 import { HttpError } from "../../core/errors/http-error.js";
-import { __resetProductsForTests, createProduct } from "./products.service.js";
+import { __resetProductsForTests, createProduct, getProducts } from "./products.service.js";
 
 describe("products.service", () => {
   beforeEach(() => {
@@ -55,5 +55,57 @@ describe("products.service", () => {
       code: "VALIDATION_ERROR",
       message: "Product price must be non-negative",
     } satisfies Partial<HttpError>);
+  });
+
+  describe("getProducts", () => {
+    it("returns empty array for tenant with no products", async () => {
+      const result = await getProducts("tenant-1");
+
+      expect(result.items).toEqual([]);
+      expect(result.nextCursor).toBeNull();
+    });
+
+    it("clamps limit 0 to minimum of 1", async () => {
+      await createProduct("tenant-1", { name: "Product 1", price: 100 });
+      await createProduct("tenant-1", { name: "Product 2", price: 200 });
+
+      const result = await getProducts("tenant-1", { limit: 0 });
+
+      expect(result.items.length).toBe(1);
+      expect(result.nextCursor).not.toBeNull();
+    });
+
+    it("clamps negative limit to minimum of 1", async () => {
+      await createProduct("tenant-1", { name: "Product 1", price: 100 });
+      await createProduct("tenant-1", { name: "Product 2", price: 200 });
+
+      const result = await getProducts("tenant-1", { limit: -5 });
+
+      expect(result.items.length).toBe(1);
+      expect(result.nextCursor).not.toBeNull();
+    });
+
+    it("clamps limit exceeding MAX_PAGE_SIZE to max", async () => {
+      // Create more than MAX_PAGE_SIZE products
+      for (let i = 1; i <= 150; i++) {
+        await createProduct("tenant-1", { name: `Product ${i}`, price: i });
+      }
+
+      const result = await getProducts("tenant-1", { limit: 200 });
+
+      expect(result.items.length).toBe(100);
+      expect(result.nextCursor).not.toBeNull();
+    });
+
+    it("respects valid limit within bounds", async () => {
+      for (let i = 1; i <= 50; i++) {
+        await createProduct("tenant-1", { name: `Product ${i}`, price: i });
+      }
+
+      const result = await getProducts("tenant-1", { limit: 25 });
+
+      expect(result.items.length).toBe(25);
+      expect(result.nextCursor).not.toBeNull();
+    });
   });
 });

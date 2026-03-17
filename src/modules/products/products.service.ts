@@ -67,7 +67,7 @@ export const getProducts = async (
   tenantId: string,
   options: GetProductsOptions = {},
 ): Promise<GetProductsResult> => {
-  const pageSize = Math.min(options.limit ?? DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE);
+  const pageSize = Math.min(Math.max(options.limit ?? DEFAULT_PAGE_SIZE, 1), MAX_PAGE_SIZE);
   const allProducts = getAllForTenant(tenantId);
 
   let startIndex = 0;
