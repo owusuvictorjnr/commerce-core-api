@@ -86,6 +86,19 @@ describe("productsRouter", () => {
     expect(deps.getProducts).toHaveBeenCalledWith("tenant-1", expect.objectContaining({}));
   });
 
+  it("returns 400 for GET /products when cursor query is not a string", async () => {
+    const deps = makeDeps();
+    const app = createTestApp(createProductsRouter(deps));
+
+    const response = await request(app)
+      .get("/?cursor=abc&cursor=def")
+      .set(makeAuthHeaders());
+
+    expect(response.status).toBe(400);
+    expect(response.body.error.code).toBe("VALIDATION_ERROR");
+    expect(response.body.error.message).toBe("Query parameter 'cursor' must be a string");
+  });
+
   it("returns 400 for POST /products with missing name", async () => {
     const deps = makeDeps();
     const app = createTestApp(createProductsRouter(deps));

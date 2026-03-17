@@ -55,6 +55,9 @@ export const createProductsRouter = (
       if (req.query["limit"] !== undefined && limit === null) {
         throw new HttpError(400, "VALIDATION_ERROR", "Query parameter 'limit' must be a positive integer");
       }
+      if (req.query["cursor"] !== undefined && typeof req.query["cursor"] !== "string") {
+        throw new HttpError(400, "VALIDATION_ERROR", "Query parameter 'cursor' must be a string");
+      }
 
       const opts = {
         ...(limit !== null ? { limit } : {}),
