@@ -1,18 +1,225 @@
-// Prisma 7 datasource connection is configured in prisma.config.ts.
-datasource db {
-  provider = "postgresql"
-}
-
 generator client {
   provider = "prisma-client-js"
 }
 
-model Order {
-  id        Int      @id @default(autoincrement())
+datasource db {
+  provider = "postgresql"
+}
+
+///////////////////////
+// ENUMS
+///////////////////////
+
+enum OrderStatus {
+  PENDING
+  PARTIAL_PAID
+  FULLY_PAID
+  CANCELLED
+}
+
+enum PaymentType {
+  DEPOSIT
+  BALANCE
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCESS
+  FAILED
+}
+
+enum PreorderStatus {
+  RESERVED
+  READY_FOR_PICKUP
+  COMPLETED
+  EXPIRED
+}
+
+///////////////////////
+// TENANT
+///////////////////////
+
+model Tenant {
+  id        String   @id @default(uuid())
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users     User[]
+  products  Product[]
+  inventories Inventory[]
+  orders    Order[]
+  orderItems OrderItem[]
+  payments  Payment[]
+  preorders Preorder[]
+
+  @@index([id])
+}
+
+///////////////////////
+// USER
+///////////////////////
+
+model User {
+  id        String   @id @default(uuid())
   tenantId  String
-  items     Json
+  email     String   @unique
+  name      String?
+  role      String   // ADMIN, STAFF, CUSTOMER
+
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+
+  orders    Order[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([tenantId])
+}
+
+///////////////////////
+// PRODUCT
+///////////////////////
+
+model Product {
+  id          String   @id @default(uuid())
+  tenantId    String
+  name        String
+  description String?
+  price       Float
+
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+
+  inventory   Inventory?
+  orderItems  OrderItem[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([tenantId])
+  @@unique([tenantId, id])
+}
+
+///////////////////////
+// INVENTORY
+///////////////////////
+
+model Inventory {
+  id               String   @id @default(uuid())
+  tenantId         String
+  productId        String
+  quantity         Int
+  reservedQuantity Int      @default(0)
+
+  tenant           Tenant   @relation(fields: [tenantId], references: [id])
+  product          Product  @relation(fields: [tenantId, productId], references: [tenantId, id])
+
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([tenantId])
+  @@unique([tenantId, productId])
+}
+
+///////////////////////
+// ORDER
+///////////////////////
+
+model Order {
+  id              String        @id @default(uuid())
+  tenantId        String
+  userId          String
+
+  totalAmount     Float
+  paidAmount      Float         @default(0)
+  remainingAmount Float
+
+  status          OrderStatus   @default(PENDING)
+
+  tenant          Tenant        @relation(fields: [tenantId], references: [id])
+  user            User          @relation(fields: [userId], references: [id])
+
+  items           OrderItem[]
+  payments        Payment[]
+  preorder        Preorder?
+
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@index([tenantId])
+  @@index([userId])
+  @@unique([tenantId, id])
+}
+
+///////////////////////
+// ORDER ITEM
+///////////////////////
+
+model OrderItem {
+  id        String   @id @default(uuid())
+  tenantId  String
+  orderId   String
+  productId String
+
+  quantity  Int
+  price     Float
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+  order     Order    @relation(fields: [tenantId, orderId], references: [tenantId, id])
+  product   Product  @relation(fields: [tenantId, productId], references: [tenantId, id])
+
+  @@index([tenantId])
+  @@index([orderId])
+  @@index([productId])
+}
+
+///////////////////////
+// PAYMENT
+///////////////////////
+
+model Payment {
+  id                    String         @id @default(uuid())
+  tenantId              String
+  orderId               String
+
+  amount                Float
+  paymentType           PaymentType
+  status                PaymentStatus  @default(PENDING)
+  transactionReference  String?
+
+  tenant                Tenant         @relation(fields: [tenantId], references: [id])
+  order                 Order          @relation(fields: [tenantId, orderId], references: [tenantId, id])
+
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
+
+  @@index([tenantId])
+  @@index([orderId])
+  @@index([tenantId, orderId])
+}
+
+///////////////////////
+// PREORDER
+///////////////////////
+
+model Preorder {
+  id              String          @id @default(uuid())
+  tenantId        String
+  orderId         String
+
+  preorderStatus  PreorderStatus  @default(RESERVED)
+  pickupDeadline  DateTime
+
+  tenant          Tenant          @relation(fields: [tenantId], references: [id])
+  order           Order           @relation(fields: [tenantId, orderId], references: [tenantId, id])
+
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@unique([tenantId, orderId])
+  @@index([tenantId])
+  @@index([tenantId, orderId])
 }

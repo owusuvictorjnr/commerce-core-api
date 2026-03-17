@@ -9,12 +9,12 @@ export interface EventPayloadMap {
     email: string;
   };
   [EVENTS.ORDER_CREATED]: {
-    orderId: number;
+    orderId: string;
     tenantId: string;
   };
   [EVENTS.PAYMENT_SUCCESS]: {
     paymentId: string;
-    orderId: number;
+    orderId: string;
     tenantId: string;
   };
 }

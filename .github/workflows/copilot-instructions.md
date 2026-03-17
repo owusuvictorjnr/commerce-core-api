@@ -219,3 +219,231 @@ All generated code must follow these rules:
 * Tenant isolation must always be respected
 
 Never place business logic inside controllers.
+
+
+
+---
+
+# 1️⃣1️⃣ Database Architecture Enforcement (CRITICAL)
+
+All generated database models and queries must follow strict SaaS architecture rules.
+
+## Multi-Tenant Rules (MANDATORY)
+
+* Every model MUST include `tenantId`
+* All Prisma queries MUST filter by `tenantId`
+* Never allow cross-tenant data access
+
+Copilot must reject any code missing tenant isolation.
+
+---
+
+## Core System Entities
+
+The system must be designed using the following normalized modules:
+
+* Tenant
+* User
+* Product
+* Inventory
+* Order
+* OrderItem
+* Payment
+* Preorder
+
+Do NOT merge unrelated entities.
+
+---
+
+## Order & Payment Structure (STRICT)
+
+Orders must support partial payments.
+
+Orders MUST include:
+
+* totalAmount
+* paidAmount
+* remainingAmount
+* status (PENDING, PARTIAL_PAID, FULLY_PAID, CANCELLED)
+
+Payments MUST be a separate table.
+
+Each payment MUST include:
+
+* orderId
+* amount
+* paymentType (DEPOSIT, BALANCE)
+* transactionReference
+* status
+
+Copilot must reject:
+
+* boolean payment fields (e.g. isPaid)
+* embedding payments inside orders
+
+---
+
+## Inventory Rules
+
+Inventory MUST be separate from products.
+
+Inventory MUST include:
+
+* productId
+* quantity
+* reservedQuantity
+
+Copilot must reject:
+
+* storing stock directly in product table
+* updating stock without reservation tracking
+
+---
+
+## Preorder System Rules
+
+Preorders must:
+
+* reserve stock
+* link to orders
+* enforce pickup deadline (7 days after arrival)
+
+Required fields:
+
+* preorderStatus
+* pickupDeadline
+
+Copilot must flag missing preorder lifecycle logic.
+
+---
+
+## Relationships (STRICT)
+
+* User belongs to Tenant
+* Product belongs to Tenant
+* Order belongs to User and Tenant
+* OrderItem belongs to Order and Product
+* Payment belongs to Order
+* Inventory belongs to Product
+
+Copilot must enforce relational integrity.
+
+---
+
+## Auditing Fields
+
+All models MUST include:
+
+* createdAt
+* updatedAt
+
+Optional:
+
+* deletedAt (soft delete)
+
+---
+
+## Forbidden Patterns
+
+Copilot must reject:
+
+* use of `any`
+* storing relational data as JSON blobs
+* skipping Prisma relations
+* business logic inside schema definitions
+* direct DB access from controllers
+
+
+
+
+---
+
+# 1️⃣2️⃣ Prisma Schema Design Intelligence
+
+Copilot must generate database schemas that follow production-grade SaaS architecture.
+
+## Schema Design Rules
+
+* Use Prisma ORM with PostgreSQL
+* Use UUIDs for all primary keys
+* Normalize all relationships (no duplication)
+* Avoid nullable fields unless necessary
+* Use enums for status fields
+* Always define relations explicitly using `@relation`
+
+---
+
+## Multi-Tenant Enforcement
+
+* Every core model MUST include `tenantId`
+* Always add index on `tenantId`
+* Queries must filter by `tenantId`
+
+---
+
+## Financial Accuracy Rules
+
+Orders must NEVER use:
+
+* `isPaid: boolean`
+
+Instead use:
+
+* totalAmount
+* paidAmount
+* remainingAmount
+
+Payments must be separate from orders.
+
+---
+
+## Inventory Design
+
+* Inventory must be a separate model
+* Must include:
+
+  * quantity
+  * reservedQuantity
+* Must be linked to Product via relation
+
+---
+
+## Relationship Rules
+
+Copilot must enforce:
+
+* One-to-many: Tenant → Users, Products, Orders
+* One-to-many: Order → OrderItems, Payments
+* One-to-one: Product → Inventory
+* One-to-one: Order → Preorder (optional)
+
+---
+
+## Indexing Strategy
+
+Always recommend indexes for:
+
+* tenantId
+* foreign keys (orderId, productId, userId)
+
+---
+
+## Data Integrity Rules
+
+Copilot must:
+
+* prevent orphan records
+* enforce foreign key relationships
+* avoid cascading issues unless explicitly defined
+
+---
+
+## Forbidden Patterns
+
+Copilot must reject:
+
+* storing arrays/objects in JSON instead of relations
+* mixing inventory inside product
+* embedding payments inside orders
+* missing enums for status fields
+* using `any` type in schema-related logic

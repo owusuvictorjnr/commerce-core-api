@@ -3,17 +3,14 @@ import request from "supertest";
 import { jest } from "@jest/globals";
 import { createOrdersRouter } from "./order.routes.js";
 import { errorMiddleware } from "../../middleware/error.middleware.js";
-import type { createOrder, getOrders } from "./order.service.js";
+import type { createOrder, getOrders, getOrderById, updateOrderStatus } from "./order.service.js";
 
-const makeDeps = () => {
-  const createOrderMock = jest.fn() as jest.MockedFunction<typeof createOrder>;
-  const getOrdersMock = jest.fn() as jest.MockedFunction<typeof getOrders>;
-
-  return {
-    createOrder: createOrderMock,
-    getOrders: getOrdersMock,
-  };
-};
+const makeDeps = () => ({
+  createOrder: jest.fn() as jest.MockedFunction<typeof createOrder>,
+  getOrders: jest.fn() as jest.MockedFunction<typeof getOrders>,
+  getOrderById: jest.fn() as jest.MockedFunction<typeof getOrderById>,
+  updateOrderStatus: jest.fn() as jest.MockedFunction<typeof updateOrderStatus>,
+});
 
 describe("ordersRouter", () => {
   const createTestApp = (router: express.Router) => {
@@ -53,8 +50,20 @@ describe("ordersRouter", () => {
   it("returns paginated tenant orders", async () => {
     const deps = makeDeps();
     deps.getOrders.mockResolvedValue({
-      items: [{ id: 1, tenantId: "tenant-1", items: [], createdAt: new Date(), updatedAt: new Date() }],
-      nextCursor: 1,
+      items: [
+        {
+          id: "1",
+          tenantId: "tenant-1",
+          userId: "user-1",
+          totalAmount: 100,
+          paidAmount: 0,
+          remainingAmount: 100,
+          status: "PENDING",
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      ],
+      nextCursor: "1",
     });
     const router = express.Router();
     router.use("/orders", createOrdersRouter(deps));
@@ -65,16 +74,21 @@ describe("ordersRouter", () => {
       .set("x-tenant-id", "tenant-1");
 
     expect(response.status).toBe(200);
-    expect(response.body.pagination.nextCursor).toBe(1);
+    expect(response.body.pagination.nextCursor).toBe("1");
     expect(deps.getOrders).toHaveBeenCalledWith("tenant-1", { limit: 1 });
   });
 
   it("creates order for tenant", async () => {
     const deps = makeDeps();
     deps.createOrder.mockResolvedValue({
-      id: 3,
+      id: "3",
       tenantId: "tenant-9",
-      items: [{ sku: "A-01", qty: 2 }],
+      userId: "user-9",
+      totalAmount: 100,
+      paidAmount: 0,
+      remainingAmount: 100,
+      status: "PENDING",
+      items: [],
       createdAt: new Date(),
       updatedAt: new Date(),
     });
@@ -85,12 +99,13 @@ describe("ordersRouter", () => {
     const response = await request(app)
       .post("/orders")
       .set("Authorization", "Bearer test-token")
+      .set("x-user-id", "user-9")
       .set("x-tenant-id", "tenant-9")
-      .send({ items: [{ sku: "A-01", qty: 2 }] });
+      .send({ items: [{ productId: "prod-1", quantity: 2, price: 50 }] });
 
     expect(response.status).toBe(201);
-    expect(deps.createOrder).toHaveBeenCalledWith("tenant-9", {
-      items: [{ sku: "A-01", qty: 2 }],
+    expect(deps.createOrder).toHaveBeenCalledWith("tenant-9", "user-9", {
+      items: [{ productId: "prod-1", quantity: 2, price: 50 }],
     });
   });
 
@@ -116,7 +131,7 @@ describe("ordersRouter", () => {
     router.use("/orders", createOrdersRouter(deps));
     const app = createTestApp(router);
     const response = await request(app)
-      .get("/orders?cursor=abc")
+      .get("/orders?cursor=")
       .set("Authorization", "Bearer test-token")
       .set("x-tenant-id", "tenant-1");
 
@@ -152,6 +167,101 @@ describe("ordersRouter", () => {
       .set("x-tenant-id", "tenant-1")
       .send({ items: "not-an-array" });
 
+    expect(response.status).toBe(400);
+    expect(response.body.error.code).toBe("VALIDATION_ERROR");
+  });
+
+  it("returns 400 when items array contains invalid item (missing productId)", async () => {
+    const deps = makeDeps();
+    const router = express.Router();
+    router.use("/orders", createOrdersRouter(deps));
+    const app = createTestApp(router);
+    const response = await request(app)
+      .post("/orders")
+      .set("Authorization", "Bearer test-token")
+      .set("x-tenant-id", "tenant-1")
+      .send({ items: [{ quantity: 2, price: 50 }] });
+    expect(response.status).toBe(400);
+    expect(response.body.error.code).toBe("VALIDATION_ERROR");
+  });
+
+  it("GET /:id returns 200 with order", async () => {
+    const deps = makeDeps();
+    deps.getOrderById.mockResolvedValue({
+      id: "order-1",
+      tenantId: "tenant-1",
+      userId: "user-1",
+      totalAmount: 100,
+      paidAmount: 0,
+      remainingAmount: 100,
+      status: "PENDING",
+      items: [],
+      payments: [],
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    const router = express.Router();
+    router.use("/orders", createOrdersRouter(deps));
+    const app = createTestApp(router);
+    const response = await request(app)
+      .get("/orders/order-1")
+      .set("Authorization", "Bearer test-token")
+      .set("x-tenant-id", "tenant-1");
+    expect(response.status).toBe(200);
+    expect(response.body.data.id).toBe("order-1");
+    expect(deps.getOrderById).toHaveBeenCalledWith("tenant-1", "order-1");
+  });
+
+  it("GET /:id returns 404 when order not found", async () => {
+    const deps = makeDeps();
+    deps.getOrderById.mockResolvedValue(null);
+    const router = express.Router();
+    router.use("/orders", createOrdersRouter(deps));
+    const app = createTestApp(router);
+    const response = await request(app)
+      .get("/orders/missing")
+      .set("Authorization", "Bearer test-token")
+      .set("x-tenant-id", "tenant-1");
+    expect(response.status).toBe(404);
+    expect(response.body.error.code).toBe("NOT_FOUND");
+  });
+
+  it("PATCH /:id updates order status", async () => {
+    const deps = makeDeps();
+    deps.updateOrderStatus.mockResolvedValue({
+      id: "order-1",
+      tenantId: "tenant-1",
+      userId: "user-1",
+      totalAmount: 100,
+      paidAmount: 0,
+      remainingAmount: 100,
+      status: "CANCELLED",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    const router = express.Router();
+    router.use("/orders", createOrdersRouter(deps));
+    const app = createTestApp(router);
+    const response = await request(app)
+      .patch("/orders/order-1")
+      .set("Authorization", "Bearer test-token")
+      .set("x-tenant-id", "tenant-1")
+      .send({ status: "CANCELLED" });
+    expect(response.status).toBe(200);
+    expect(response.body.data.status).toBe("CANCELLED");
+    expect(deps.updateOrderStatus).toHaveBeenCalledWith("tenant-1", "order-1", "CANCELLED");
+  });
+
+  it("PATCH /:id returns 400 for invalid status", async () => {
+    const deps = makeDeps();
+    const router = express.Router();
+    router.use("/orders", createOrdersRouter(deps));
+    const app = createTestApp(router);
+    const response = await request(app)
+      .patch("/orders/order-1")
+      .set("Authorization", "Bearer test-token")
+      .set("x-tenant-id", "tenant-1")
+      .send({ status: "UNKNOWN" });
     expect(response.status).toBe(400);
     expect(response.body.error.code).toBe("VALIDATION_ERROR");
   });
