@@ -7,7 +7,9 @@ export const getInventoryByProduct = async (tenantId: string, productId: string)
   if (!product) {
     throw new HttpError(404, "NOT_FOUND", "Product not found");
   }
-  const inventory = await prisma.inventory.findUnique({ where: { productId } });
+  const inventory = await prisma.inventory.findUnique({
+    where: { tenantId_productId: { tenantId, productId } },
+  });
   if (!inventory) {
     throw new HttpError(404, "NOT_FOUND", "Inventory record not found for this product");
   }
@@ -28,8 +30,8 @@ export const upsertInventory = async (
     throw new HttpError(404, "NOT_FOUND", "Product not found");
   }
   return prisma.inventory.upsert({
-    where: { productId },
-    create: { productId, quantity: data.quantity },
+    where: { tenantId_productId: { tenantId, productId } },
+    create: { tenantId, productId, quantity: data.quantity },
     update: { quantity: data.quantity },
   });
 };
@@ -47,7 +49,9 @@ export const adjustInventory = async (
   if (!product) {
     throw new HttpError(404, "NOT_FOUND", "Product not found");
   }
-  const inventory = await prisma.inventory.findUnique({ where: { productId } });
+  const inventory = await prisma.inventory.findUnique({
+    where: { tenantId_productId: { tenantId, productId } },
+  });
   if (!inventory) {
     throw new HttpError(404, "NOT_FOUND", "Inventory record not found. Set inventory first.");
   }
@@ -68,7 +72,7 @@ export const adjustInventory = async (
     );
   }
   return prisma.inventory.update({
-    where: { productId },
+    where: { tenantId_productId: { tenantId, productId } },
     data: { quantity: newQuantity },
   });
 };

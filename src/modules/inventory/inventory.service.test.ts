@@ -32,6 +32,7 @@ const makeProduct = (): Product => ({
 
 const makeInventory = (overrides: Partial<Inventory> = {}): Inventory => ({
   id: "inv-1",
+  tenantId: "tenant-1",
   productId: "prod-1",
   quantity: 50,
   reservedQuantity: 0,
@@ -162,7 +163,7 @@ describe("adjustInventory", () => {
     const result = await adjustInventory("tenant-1", "prod-1", { adjustment: 5 });
     expect(result.quantity).toBe(15);
     expect(inventoryUpdateMock).toHaveBeenCalledWith({
-      where: { productId: "prod-1" },
+      where: { tenantId_productId: { tenantId: "tenant-1", productId: "prod-1" } },
       data: { quantity: 15 },
     });
   });
