@@ -175,6 +175,7 @@ model Payment {
   order                 Order          @relation(fields: [orderId], references: [id])
 
   createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
 
   @@index([orderId])
 }

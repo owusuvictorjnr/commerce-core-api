@@ -48,6 +48,7 @@ const makePayment = (overrides: Partial<Payment> = {}): Payment => ({
   status: "SUCCESS",
   transactionReference: null,
   createdAt: new Date(),
+  updatedAt: new Date(),
   ...overrides,
 });
 
