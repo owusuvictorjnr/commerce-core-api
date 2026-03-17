@@ -44,4 +44,28 @@ describe("auth.service", () => {
       code: "CONFLICT",
     } satisfies Partial<HttpError>);
   });
+
+  it("rejects registration when email is empty after trimming", async () => {
+    await expect(registerUser("   ", "password123")).rejects.toMatchObject({
+      statusCode: 400,
+      code: "VALIDATION_ERROR",
+      message: "Email is required",
+    } satisfies Partial<HttpError>);
+  });
+
+  it("rejects registration when password is whitespace-only", async () => {
+    await expect(registerUser("user@example.com", "    ")).rejects.toMatchObject({
+      statusCode: 400,
+      code: "VALIDATION_ERROR",
+      message: "Password is required",
+    } satisfies Partial<HttpError>);
+  });
+
+  it("rejects registration when password is shorter than 8 characters", async () => {
+    await expect(registerUser("user@example.com", "short")).rejects.toMatchObject({
+      statusCode: 400,
+      code: "VALIDATION_ERROR",
+      message: "Password must be at least 8 characters long",
+    } satisfies Partial<HttpError>);
+  });
 });

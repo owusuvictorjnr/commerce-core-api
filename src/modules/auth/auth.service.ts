@@ -9,6 +9,7 @@ import { logger } from "../../core/logger/index.js";
 const scrypt = promisify(scryptCallback);
 const SCRYPT_SALT_BYTES = 16;
 const SCRYPT_KEY_LENGTH = 64;
+const MIN_PASSWORD_LENGTH = 8;
 
 type AuthUser = {
   id: string;
@@ -83,11 +84,23 @@ const toAuthResult = (user: AuthUser): AuthResult => ({
 
 export const registerUser = async (email: string, password: string): Promise<AuthResult> => {
   const normalizedEmail = email.trim().toLowerCase();
+  const trimmedPassword = password.trim();
+
+  if (!normalizedEmail) {
+    throw new HttpError(400, "VALIDATION_ERROR", "Email is required");
+  }
+  if (!trimmedPassword) {
+    throw new HttpError(400, "VALIDATION_ERROR", "Password is required");
+  }
+  if (trimmedPassword.length < MIN_PASSWORD_LENGTH) {
+    throw new HttpError(400, "VALIDATION_ERROR", "Password must be at least 8 characters long");
+  }
+
   if (usersByEmail.has(normalizedEmail)) {
     throw new HttpError(409, "CONFLICT", "User with this email already exists");
   }
 
-  const passwordHash = await hashPassword(password);
+  const passwordHash = await hashPassword(trimmedPassword);
 
   const user: AuthUser = {
     id: randomUUID(),
