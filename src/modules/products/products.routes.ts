@@ -79,18 +79,7 @@ const parseOptionalPrice = (value: unknown): number | undefined => {
     return undefined;
   }
 
-  const price =
-    typeof value === "number"
-      ? value
-      : typeof value === "string"
-        ? Number(value)
-        : NaN;
-
-  if (!Number.isFinite(price) || price < 0) {
-    throw new HttpError(400, "VALIDATION_ERROR", "Product price must be a non-negative number");
-  }
-
-  return price;
+  return parseProductPrice(value);
 };
 
 const parseOptionalDescription = (value: unknown): string | undefined => {

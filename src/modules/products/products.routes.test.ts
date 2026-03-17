@@ -290,6 +290,18 @@ describe("PUT /products/:id", () => {
     expect(response.body.error.code).toBe("VALIDATION_ERROR");
   });
 
+  it("returns 400 when price is whitespace", async () => {
+    const deps = makeDeps();
+    const app = createTestApp(createProductsRouter(deps));
+    const response = await request(app)
+      .put("/prod-3")
+      .set(makeAuthHeaders())
+      .send({ price: "   " });
+    expect(response.status).toBe(400);
+    expect(response.body.error.code).toBe("VALIDATION_ERROR");
+    expect(response.body.error.message).toBe("Product price must be a non-negative number");
+  });
+
   it("returns 400 when body is not an object", async () => {
     const deps = makeDeps();
     const app = createTestApp(createProductsRouter(deps));
