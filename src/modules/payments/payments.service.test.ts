@@ -6,9 +6,11 @@ const orderUpdateMock = jest.fn<(...args: unknown[]) => Promise<Order>>();
 const paymentCreateMock = jest.fn<(...args: unknown[]) => Promise<Payment>>();
 const paymentFindManyMock = jest.fn<(...args: unknown[]) => Promise<Payment[]>>();
 const paymentFindFirstMock = jest.fn<(...args: unknown[]) => Promise<Payment | null>>();
+const transactionMock = jest.fn();
 
 jest.unstable_mockModule("../../database/prisma-client.js", () => ({
   default: () => ({
+    $transaction: transactionMock,
     order: {
       findFirst: orderFindFirstMock,
       update: orderUpdateMock,
@@ -57,6 +59,19 @@ describe("createPayment", () => {
     orderFindFirstMock.mockReset();
     orderUpdateMock.mockReset();
     paymentCreateMock.mockReset();
+    transactionMock.mockReset();
+    transactionMock.mockImplementation(async (...args: unknown[]) => {
+      const callback = args[0] as (tx: unknown) => Promise<unknown>;
+      return callback({
+        order: {
+          findFirst: orderFindFirstMock,
+          update: orderUpdateMock,
+        },
+        payment: {
+          create: paymentCreateMock,
+        },
+      });
+    });
   });
 
   it("throws 400 for non-positive amount", async () => {
@@ -91,9 +106,14 @@ describe("createPayment", () => {
     orderUpdateMock.mockResolvedValue(makeOrder());
     const result = await createPayment("tenant-1", "order-1", { amount: 100, paymentType: "DEPOSIT" });
     expect(result.amount).toBe(100);
+    expect(transactionMock).toHaveBeenCalledTimes(1);
     expect(orderUpdateMock).toHaveBeenCalledWith(
       expect.objectContaining({
-        data: expect.objectContaining({ paidAmount: 100, remainingAmount: 100, status: "PARTIAL_PAID" }),
+        data: expect.objectContaining({
+          paidAmount: { increment: 100 },
+          remainingAmount: 100,
+          status: "PARTIAL_PAID",
+        }),
       }),
     );
   });

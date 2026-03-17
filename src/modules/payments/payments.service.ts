@@ -37,31 +37,39 @@ export const createPayment = async (
   }
 
   const prisma = getPrismaClient();
-  const order = await prisma.order.findFirst({ where: { id: orderId, tenantId } });
-  if (!order) {
-    throw new HttpError(404, "NOT_FOUND", "Order not found");
-  }
-  if (order.status === "CANCELLED") {
-    throw new HttpError(400, "VALIDATION_ERROR", "Cannot process payment for a cancelled order");
-  }
+  const payment = await prisma.$transaction(async (tx) => {
+    const order = await tx.order.findFirst({ where: { id: orderId, tenantId } });
+    if (!order) {
+      throw new HttpError(404, "NOT_FOUND", "Order not found");
+    }
+    if (order.status === "CANCELLED") {
+      throw new HttpError(400, "VALIDATION_ERROR", "Cannot process payment for a cancelled order");
+    }
 
-  const payment = await prisma.payment.create({
-    data: {
-      orderId,
-      amount: data.amount,
-      paymentType: data.paymentType,
-      status: "SUCCESS",
-      ...(data.transactionReference ? { transactionReference: data.transactionReference } : {}),
-    },
-  });
+    const createdPayment = await tx.payment.create({
+      data: {
+        orderId,
+        amount: data.amount,
+        paymentType: data.paymentType,
+        status: "SUCCESS",
+        ...(data.transactionReference ? { transactionReference: data.transactionReference } : {}),
+      },
+    });
 
-  const newPaidAmount = order.paidAmount + data.amount;
-  const newRemainingAmount = Math.max(order.totalAmount - newPaidAmount, 0);
-  const newStatus = newRemainingAmount <= 0 ? ("FULLY_PAID" as const) : ("PARTIAL_PAID" as const);
+    const newPaidAmount = order.paidAmount + data.amount;
+    const newRemainingAmount = Math.max(order.totalAmount - newPaidAmount, 0);
+    const newStatus = newRemainingAmount <= 0 ? ("FULLY_PAID" as const) : ("PARTIAL_PAID" as const);
 
-  await prisma.order.update({
-    where: { id: orderId },
-    data: { paidAmount: newPaidAmount, remainingAmount: newRemainingAmount, status: newStatus },
+    await tx.order.update({
+      where: { id: orderId },
+      data: {
+        paidAmount: { increment: data.amount },
+        remainingAmount: newRemainingAmount,
+        status: newStatus,
+      },
+    });
+
+    return createdPayment;
   });
 
   try {
