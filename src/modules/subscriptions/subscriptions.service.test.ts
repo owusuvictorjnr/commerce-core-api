@@ -90,6 +90,7 @@ describe("createSubscription", () => {
 
 describe("listSubscriptions", () => {
   beforeEach(() => {
+    preorderFindFirstMock.mockReset();
     preorderFindManyMock.mockReset();
   });
 
@@ -106,6 +107,32 @@ describe("listSubscriptions", () => {
       where: { tenantId: "tenant-1" },
       orderBy: { id: "asc" },
       take: 3,
+    });
+  });
+
+  it("throws 400 when cursor is invalid", async () => {
+    preorderFindFirstMock.mockResolvedValue(null);
+
+    await expect(listSubscriptions("tenant-1", { cursor: "missing-cursor" })).rejects.toMatchObject({
+      statusCode: 400,
+      message: "Invalid cursor",
+    });
+
+    expect(preorderFindManyMock).not.toHaveBeenCalled();
+  });
+
+  it("applies cursor pagination when cursor is valid", async () => {
+    preorderFindFirstMock.mockResolvedValue(makeSubscription({ id: "sub-1" }));
+    preorderFindManyMock.mockResolvedValue([makeSubscription({ id: "sub-2" })]);
+
+    await listSubscriptions("tenant-1", { limit: 2, cursor: "sub-1" });
+
+    expect(preorderFindManyMock).toHaveBeenCalledWith({
+      where: { tenantId: "tenant-1" },
+      orderBy: { id: "asc" },
+      take: 3,
+      cursor: { id: "sub-1" },
+      skip: 1,
     });
   });
 });

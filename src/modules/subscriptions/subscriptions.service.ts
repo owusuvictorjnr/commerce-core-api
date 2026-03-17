@@ -55,6 +55,15 @@ export const listSubscriptions = async (
   const prisma = getPrismaClient();
   const pageSize = Math.min(Math.max(options.limit ?? DEFAULT_PAGE_SIZE, 1), MAX_PAGE_SIZE);
 
+  if (options.cursor) {
+    const cursorRecord = await prisma.preorder.findFirst({
+      where: { id: options.cursor, tenantId },
+    });
+    if (!cursorRecord) {
+      throw new HttpError(400, "VALIDATION_ERROR", "Invalid cursor");
+    }
+  }
+
   const records = await prisma.preorder.findMany({
     where: { tenantId },
     orderBy: { id: "asc" },
