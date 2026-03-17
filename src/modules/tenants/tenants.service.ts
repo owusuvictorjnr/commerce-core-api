@@ -44,6 +44,9 @@ export const getTenantById = async (id: string) => {
 };
 
 export const updateTenant = async (id: string, data: { name?: string }) => {
+  if (data.name === undefined) {
+    throw new HttpError(400, "VALIDATION_ERROR", "At least one field must be provided for update");
+  }
   if (data.name !== undefined && !data.name.trim()) {
     throw new HttpError(400, "VALIDATION_ERROR", "Tenant name cannot be empty");
   }

@@ -131,6 +131,13 @@ describe("updateTenant", () => {
     await expect(updateTenant("tenant-1", { name: "  " })).rejects.toMatchObject({ statusCode: 400 });
   });
 
+  it("throws 400 when no fields are provided", async () => {
+    await expect(updateTenant("tenant-1", {})).rejects.toMatchObject({
+      statusCode: 400,
+      message: "At least one field must be provided for update",
+    });
+  });
+
   it("updates the tenant name", async () => {
     findUniqueMock.mockResolvedValue(makeTenant());
     updateMock.mockResolvedValue(makeTenant({ name: "New Name" }));
