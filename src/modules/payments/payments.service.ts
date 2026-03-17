@@ -20,6 +20,36 @@ type GetPaymentsOptions = {
   cursor?: string;
 };
 
+const paginatePayments = <T extends { id: string }>(items: T[], pageSize: number) => {
+  const hasMore = items.length > pageSize;
+  const page = hasMore ? items.slice(0, pageSize) : items;
+  const nextCursor = hasMore ? (page[page.length - 1]?.id ?? null) : null;
+  return { items: page, nextCursor };
+};
+
+const getPaymentPaginationArgs = (options: GetPaymentsOptions, pageSize: number) => ({
+  orderBy: { id: "asc" as const },
+  take: pageSize + 1,
+  ...(options.cursor ? { cursor: { id: options.cursor }, skip: 1 } : {}),
+});
+
+const assertValidPaymentCursor = async (
+  prisma: ReturnType<typeof getPrismaClient>,
+  tenantId: string,
+  orderId: string,
+  cursor?: string,
+) => {
+  if (!cursor) return;
+
+  const cursorPayment = await prisma.payment.findFirst({
+    where: { id: cursor, tenantId, orderId },
+  });
+
+  if (!cursorPayment) {
+    throw new HttpError(400, "VALIDATION_ERROR", "Invalid cursor");
+  }
+};
+
 export const createPayment = async (
   tenantId: string,
   orderId: string,
@@ -109,25 +139,13 @@ export const getPayments = async (
   }
 
   const pageSize = Math.min(Math.max(options.limit ?? DEFAULT_PAGE_SIZE, 1), MAX_PAGE_SIZE);
-  if (options.cursor) {
-    const cursorPayment = await prisma.payment.findFirst({
-      where: { id: options.cursor, tenantId, orderId },
-    });
-    if (!cursorPayment) {
-      throw new HttpError(400, "VALIDATION_ERROR", "Invalid cursor");
-    }
-  }
+  await assertValidPaymentCursor(prisma, tenantId, orderId, options.cursor);
 
   const items = await prisma.payment.findMany({
     where: { tenantId, orderId },
-    orderBy: { id: "asc" },
-    take: pageSize + 1,
-    ...(options.cursor ? { cursor: { id: options.cursor }, skip: 1 } : {}),
+    ...getPaymentPaginationArgs(options, pageSize),
   });
-  const hasMore = items.length > pageSize;
-  const page = hasMore ? items.slice(0, pageSize) : items;
-  const nextCursor = hasMore ? (page[page.length - 1]?.id ?? null) : null;
-  return { items: page, nextCursor };
+  return paginatePayments(items, pageSize);
 };
 
 export const getPaymentById = async (tenantId: string, paymentId: string) => {
