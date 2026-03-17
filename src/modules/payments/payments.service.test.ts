@@ -101,6 +101,46 @@ describe("createPayment", () => {
     ).rejects.toMatchObject({ statusCode: 400 });
   });
 
+  it("throws 400 when order is already fully paid", async () => {
+    orderFindFirstMock.mockResolvedValue(
+      makeOrder({
+        status: "FULLY_PAID",
+        totalAmount: 100,
+        paidAmount: 100,
+        remainingAmount: 0,
+      }),
+    );
+
+    await expect(
+      createPayment("tenant-1", "order-1", { amount: 10, paymentType: "DEPOSIT" }),
+    ).rejects.toMatchObject({
+      statusCode: 400,
+      message: "Cannot process payment for an order that is already fully paid",
+    });
+    expect(paymentCreateMock).not.toHaveBeenCalled();
+    expect(orderUpdateMock).not.toHaveBeenCalled();
+  });
+
+  it("throws 400 when payment amount exceeds remaining balance", async () => {
+    orderFindFirstMock.mockResolvedValue(
+      makeOrder({
+        totalAmount: 200,
+        paidAmount: 150,
+        remainingAmount: 50,
+        status: "PARTIAL_PAID",
+      }),
+    );
+
+    await expect(
+      createPayment("tenant-1", "order-1", { amount: 60, paymentType: "BALANCE" }),
+    ).rejects.toMatchObject({
+      statusCode: 400,
+      message: "Payment amount exceeds the remaining balance for this order",
+    });
+    expect(paymentCreateMock).not.toHaveBeenCalled();
+    expect(orderUpdateMock).not.toHaveBeenCalled();
+  });
+
   it("creates payment and updates order to PARTIAL_PAID", async () => {
     orderFindFirstMock.mockResolvedValue(makeOrder());
     paymentCreateMock.mockResolvedValue(makePayment());

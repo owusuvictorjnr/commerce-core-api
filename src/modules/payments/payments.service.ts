@@ -45,6 +45,22 @@ export const createPayment = async (
     if (order.status === "CANCELLED") {
       throw new HttpError(400, "VALIDATION_ERROR", "Cannot process payment for a cancelled order");
     }
+    const remainingAmount =
+      order.remainingAmount ?? Math.max(order.totalAmount - order.paidAmount, 0);
+    if (order.status === "FULLY_PAID" || remainingAmount <= 0) {
+      throw new HttpError(
+        400,
+        "VALIDATION_ERROR",
+        "Cannot process payment for an order that is already fully paid",
+      );
+    }
+    if (data.amount > remainingAmount) {
+      throw new HttpError(
+        400,
+        "VALIDATION_ERROR",
+        "Payment amount exceeds the remaining balance for this order",
+      );
+    }
 
     const createdPayment = await tx.payment.create({
       data: {
@@ -57,8 +73,7 @@ export const createPayment = async (
       },
     });
 
-    const newPaidAmount = order.paidAmount + data.amount;
-    const newRemainingAmount = Math.max(order.totalAmount - newPaidAmount, 0);
+    const newRemainingAmount = Math.max(remainingAmount - data.amount, 0);
     const newStatus = newRemainingAmount <= 0 ? ("FULLY_PAID" as const) : ("PARTIAL_PAID" as const);
 
     await tx.order.update({
