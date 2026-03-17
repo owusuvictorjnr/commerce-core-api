@@ -51,9 +51,12 @@ const verifyAndExtractAuthClaims = (token: string): { userId: string; email: str
 			throw new HttpError(401, "UNAUTHORIZED", "Authentication token missing required subject");
 		}
 
-		const email = typeof payload["email"] === "string" ? payload["email"] : "";
+		const rawEmail = payload["email"];
+		if (typeof rawEmail !== "string" || rawEmail.trim() === "") {
+			throw new HttpError(401, "UNAUTHORIZED", "Authentication token missing required email");
+		}
 
-		return { userId, email };
+		return { userId, email: rawEmail };
 	} catch (error) {
 		if (error instanceof HttpError) {
 			throw error;
