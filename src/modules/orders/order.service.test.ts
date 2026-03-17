@@ -5,12 +5,16 @@ import { HttpError } from "../../core/errors/http-error.js";
 
 const findManyMock = jest.fn<(...args: unknown[]) => Promise<Order[]>>();
 const createMock = jest.fn<(...args: unknown[]) => Promise<unknown>>();
+const findFirstMock = jest.fn<(...args: unknown[]) => Promise<Order | null>>();
+const updateMock = jest.fn<(...args: unknown[]) => Promise<Order>>();
 
 jest.unstable_mockModule("../../database/prisma-client.js", () => ({
   default: () => ({
     order: {
       findMany: findManyMock,
       create: createMock,
+      findFirst: findFirstMock,
+      update: updateMock,
     },
   }),
 }));
@@ -27,7 +31,101 @@ jest.unstable_mockModule("../../events/event-bus.js", () => ({
   },
 }));
 
-const { getOrders } = await import("./order.service.js");
+const { getOrders, createOrder, getOrderById, updateOrderStatus } =
+  await import("./order.service.js");
+
+const makeOrder = (overrides: Partial<Order> = {}): Order => ({
+  id: "1",
+  tenantId: "tenant-1",
+  userId: "user-1",
+  totalAmount: 100,
+  paidAmount: 0,
+  remainingAmount: 100,
+  status: "PENDING",
+  createdAt: new Date(),
+  updatedAt: new Date(),
+  ...overrides,
+});
+
+describe("createOrder", () => {
+  beforeEach(() => {
+    createMock.mockReset();
+  });
+
+  it("throws 400 when items array is empty", async () => {
+    await expect(
+      createOrder("tenant-1", "user-1", { items: [] }),
+    ).rejects.toMatchObject({ statusCode: 400, code: "VALIDATION_ERROR" });
+  });
+
+  it("creates order with calculated totalAmount", async () => {
+    createMock.mockResolvedValue(makeOrder({ totalAmount: 200, remainingAmount: 200 }));
+    const result = await createOrder("tenant-1", "user-1", {
+      items: [
+        { productId: "prod-1", quantity: 2, price: 50 },
+        { productId: "prod-2", quantity: 1, price: 100 },
+      ],
+    });
+    expect(createMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          totalAmount: 200,
+          remainingAmount: 200,
+        }),
+      }),
+    );
+    expect(result).toBeDefined();
+  });
+});
+
+describe("getOrderById", () => {
+  beforeEach(() => {
+    findFirstMock.mockReset();
+  });
+
+  it("returns null when order not found", async () => {
+    findFirstMock.mockResolvedValue(null);
+    const result = await getOrderById("tenant-1", "order-1");
+    expect(result).toBeNull();
+  });
+
+  it("returns order when found for the correct tenant", async () => {
+    findFirstMock.mockResolvedValue(makeOrder({ id: "order-1" }));
+    const result = await getOrderById("tenant-1", "order-1");
+    expect(result?.id).toBe("order-1");
+    expect(findFirstMock).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expect.objectContaining({ id: "order-1", tenantId: "tenant-1" }) }),
+    );
+  });
+});
+
+describe("updateOrderStatus", () => {
+  beforeEach(() => {
+    findFirstMock.mockReset();
+    updateMock.mockReset();
+  });
+
+  it("throws 400 for invalid status", async () => {
+    await expect(
+      updateOrderStatus("tenant-1", "order-1", "INVALID" as never),
+    ).rejects.toMatchObject({ statusCode: 400, code: "VALIDATION_ERROR" });
+  });
+
+  it("throws 404 when order not found", async () => {
+    findFirstMock.mockResolvedValue(null);
+    await expect(
+      updateOrderStatus("tenant-1", "order-1", "CANCELLED"),
+    ).rejects.toMatchObject({ statusCode: 404, code: "NOT_FOUND" });
+  });
+
+  it("updates order status", async () => {
+    findFirstMock.mockResolvedValue(makeOrder());
+    updateMock.mockResolvedValue(makeOrder({ status: "CANCELLED" }));
+    const result = await updateOrderStatus("tenant-1", "1", "CANCELLED");
+    expect(result.status).toBe("CANCELLED");
+    expect(updateMock).toHaveBeenCalledWith({ where: { id: "1" }, data: { status: "CANCELLED" } });
+  });
+});
 
 describe("getOrders", () => {
   beforeEach(() => {

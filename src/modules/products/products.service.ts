@@ -122,6 +122,54 @@ export const getProductById = async (
   return getAllForTenant(tenantId).find((p) => p.id === id) ?? null;
 };
 
+type UpdateProductInput = {
+  name?: string;
+  price?: number;
+  description?: string;
+};
+
+export const updateProduct = async (
+  tenantId: string,
+  id: string,
+  input: UpdateProductInput,
+): Promise<Product> => {
+  const products = getAllForTenant(tenantId);
+  const index = products.findIndex((p) => p.id === id);
+  if (index === -1) {
+    throw new HttpError(404, "NOT_FOUND", "Product not found");
+  }
+  if (input.name !== undefined && !input.name.trim()) {
+    throw new HttpError(400, "VALIDATION_ERROR", "Product name cannot be empty");
+  }
+  if (input.price !== undefined) {
+    if (!Number.isFinite(input.price)) {
+      throw new HttpError(400, "VALIDATION_ERROR", "Product price must be a finite number");
+    }
+    if (input.price < 0) {
+      throw new HttpError(400, "VALIDATION_ERROR", "Product price must be non-negative");
+    }
+  }
+  const existing = products[index]!;
+  const updated: Product = {
+    ...existing,
+    ...(input.name !== undefined ? { name: input.name.trim() } : {}),
+    ...(input.price !== undefined ? { price: input.price } : {}),
+    ...(input.description !== undefined ? { description: input.description.trim() } : {}),
+  };
+  const updatedList = [...products];
+  updatedList[index] = updated;
+  productsByTenant.set(tenantId, updatedList);
+  return updated;
+};
+
+export const deleteProduct = async (tenantId: string, id: string): Promise<void> => {
+  const products = getAllForTenant(tenantId);
+  if (!products.some((p) => p.id === id)) {
+    throw new HttpError(404, "NOT_FOUND", "Product not found");
+  }
+  productsByTenant.set(tenantId, products.filter((p) => p.id !== id));
+};
+
 /** Reset in-memory store — tests only */
 export const __resetProductsForTests = (): void => {
   productsByTenant.clear();

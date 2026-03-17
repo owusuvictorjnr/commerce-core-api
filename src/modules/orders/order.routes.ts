@@ -1,52 +1,59 @@
 import { Router } from "express";
 import type { NextFunction, Request, Response } from "express";
-import type { Prisma } from "@prisma/client";
-import { createOrder, getOrders } from "./order.service.js";
+import type { OrderStatus } from "@prisma/client";
+import { createOrder, getOrders, getOrderById, updateOrderStatus } from "./order.service.js";
 import { tenantMiddleware } from "../../middleware/tenant.middleware.js";
 import { authMiddleware } from "../../middleware/auth.middleware.js";
 import { HttpError } from "../../core/errors/http-error.js";
 
+type OrderItemInput = {
+  productId: string;
+  quantity: number;
+  price: number;
+};
+
 type OrdersRouteDependencies = {
   createOrder: typeof createOrder;
   getOrders: typeof getOrders;
+  getOrderById: typeof getOrderById;
+  updateOrderStatus: typeof updateOrderStatus;
 };
 
-const isJsonValue = (value: unknown): value is Prisma.InputJsonValue => {
-  if (value === null) {
-    return true;
-  }
+const VALID_STATUSES: OrderStatus[] = ["PENDING", "PARTIAL_PAID", "FULLY_PAID", "CANCELLED"];
 
-  if (["string", "number", "boolean"].includes(typeof value)) {
-    return true;
-  }
-
-  if (Array.isArray(value)) {
-    return value.every((item) => isJsonValue(item));
-  }
-
-  if (typeof value !== "object") {
-    return false;
-  }
-
-  return Object.values(value).every((item) => isJsonValue(item));
+const isValidOrderItem = (value: unknown): value is OrderItemInput => {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return false;
+  const item = value as Record<string, unknown>;
+  return (
+    typeof item["productId"] === "string" &&
+    item["productId"].trim() !== "" &&
+    Number.isInteger(item["quantity"]) &&
+    (item["quantity"] as number) > 0 &&
+    typeof item["price"] === "number" &&
+    Number.isFinite(item["price"]) &&
+    (item["price"] as number) >= 0
+  );
 };
 
-const hasItemsArray = (value: unknown): value is { items: Prisma.InputJsonArray } => {
-  if (typeof value !== "object" || value === null) {
-    return false;
+const parseOrderBody = (body: unknown): { items: OrderItemInput[] } => {
+  if (typeof body !== "object" || body === null || Array.isArray(body)) {
+    throw new HttpError(400, "VALIDATION_ERROR", "Request body must be a JSON object");
   }
-
-  const record = value as Record<string, unknown>;
-  if (!("items" in record)) {
-    return false;
-  }
-
-  const items = record["items"];
+  const items = (body as Record<string, unknown>)["items"];
   if (!Array.isArray(items)) {
-    return false;
+    throw new HttpError(400, "VALIDATION_ERROR", "Request body must include an items array");
   }
-
-  return items.every((item) => isJsonValue(item));
+  if (items.length === 0) {
+    throw new HttpError(400, "VALIDATION_ERROR", "Order must have at least one item");
+  }
+  if (!items.every(isValidOrderItem)) {
+    throw new HttpError(
+      400,
+      "VALIDATION_ERROR",
+      "Each item must have productId (string), quantity (positive integer), and price (non-negative number)",
+    );
+  }
+  return { items };
 };
 
 const parsePositiveInt = (value: unknown): number | null => {
@@ -75,7 +82,12 @@ const parseCursor = (value: unknown): string | null => {
 };
 
 export const createOrdersRouter = (
-  deps: OrdersRouteDependencies = { createOrder, getOrders },
+  deps: OrdersRouteDependencies = {
+    createOrder,
+    getOrders,
+    getOrderById,
+    updateOrderStatus,
+  },
 ) => {
   const ordersRouter = Router();
 
@@ -107,15 +119,53 @@ export const createOrdersRouter = (
   });
 
   ordersRouter.post("/", async (req: Request, res: Response, next: NextFunction) => {
-    if (!hasItemsArray(req.body)) {
-      next(new HttpError(400, "VALIDATION_ERROR", "Request body must include an items array"));
-      return;
+    try {
+      const parsed = parseOrderBody(req.body);
+      const tenantId = res.locals["tenantId"] as string;
+      const auth = res.locals["auth"] as { userId: string };
+      const order = await deps.createOrder(tenantId, auth.userId, parsed);
+      res.status(201).json({ data: order });
+    } catch (error) {
+      next(error);
     }
+  });
 
-    const tenantId = res.locals["tenantId"] as string;
-    const order = await deps.createOrder(tenantId, { items: req.body.items });
+  ordersRouter.get("/:id", async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const tenantId = res.locals["tenantId"] as string;
+      const id = (req.params["id"] as string) ?? "";
+      const order = await deps.getOrderById(tenantId, id);
+      if (!order) {
+        next(new HttpError(404, "NOT_FOUND", "Order not found"));
+        return;
+      }
+      res.status(200).json({ data: order });
+    } catch (error) {
+      next(error);
+    }
+  });
 
-    res.status(201).json({ data: order });
+  ordersRouter.patch("/:id", async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const tenantId = res.locals["tenantId"] as string;
+      const id = (req.params["id"] as string) ?? "";
+      const body = req.body;
+      if (body === null || typeof body !== "object" || Array.isArray(body)) {
+        throw new HttpError(400, "VALIDATION_ERROR", "Request body must be a JSON object");
+      }
+      const status = (body as Record<string, unknown>)["status"];
+      if (!VALID_STATUSES.includes(status as OrderStatus)) {
+        throw new HttpError(
+          400,
+          "VALIDATION_ERROR",
+          `status must be one of: ${VALID_STATUSES.join(", ")}`,
+        );
+      }
+      const order = await deps.updateOrderStatus(tenantId, id, status as OrderStatus);
+      res.status(200).json({ data: order });
+    } catch (error) {
+      next(error);
+    }
   });
 
   return ordersRouter;

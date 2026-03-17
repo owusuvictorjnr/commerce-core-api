@@ -3,12 +3,14 @@ import type { NextFunction, Request, Response } from "express";
 import { authMiddleware } from "../../middleware/auth.middleware.js";
 import { tenantMiddleware } from "../../middleware/tenant.middleware.js";
 import { HttpError } from "../../core/errors/http-error.js";
-import { createProduct, getProducts, getProductById } from "./products.service.js";
+import { createProduct, getProducts, getProductById, updateProduct, deleteProduct } from "./products.service.js";
 
 type ProductsRouteDependencies = {
   createProduct: typeof createProduct;
   getProducts: typeof getProducts;
   getProductById: typeof getProductById;
+  updateProduct: typeof updateProduct;
+  deleteProduct: typeof deleteProduct;
 };
 
 type CreateProductBody = {
@@ -50,7 +52,13 @@ const parseCreateProductBody = (body: CreateProductBody) => {
 };
 
 export const createProductsRouter = (
-  deps: ProductsRouteDependencies = { createProduct, getProducts, getProductById },
+  deps: ProductsRouteDependencies = {
+    createProduct,
+    getProducts,
+    getProductById,
+    updateProduct,
+    deleteProduct,
+  },
 ) => {
   const productsRouter = Router();
 
@@ -114,6 +122,58 @@ export const createProductsRouter = (
       }
 
       res.status(200).json({ data: product });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  productsRouter.put("/:id", async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const tenantId = res.locals["tenantId"] as string;
+      const id = (req.params["id"] as string) ?? "";
+      const body = req.body;
+      if (body === null || typeof body !== "object" || Array.isArray(body)) {
+        throw new HttpError(400, "VALIDATION_ERROR", "Request body must be a JSON object");
+      }
+      const record = body as Record<string, unknown>;
+      const input: { name?: string; price?: number; description?: string } = {};
+      if (record["name"] !== undefined) {
+        if (typeof record["name"] !== "string") {
+          throw new HttpError(400, "VALIDATION_ERROR", "Product name must be a string");
+        }
+        input.name = record["name"] as string;
+      }
+      if (record["price"] !== undefined) {
+        const price =
+          typeof record["price"] === "number"
+            ? record["price"]
+            : typeof record["price"] === "string"
+              ? Number(record["price"])
+              : NaN;
+        if (!Number.isFinite(price as number) || (price as number) < 0) {
+          throw new HttpError(400, "VALIDATION_ERROR", "Product price must be a non-negative number");
+        }
+        input.price = price as number;
+      }
+      if (record["description"] !== undefined) {
+        if (typeof record["description"] !== "string") {
+          throw new HttpError(400, "VALIDATION_ERROR", "Product description must be a string");
+        }
+        input.description = record["description"] as string;
+      }
+      const product = await deps.updateProduct(tenantId, id, input);
+      res.status(200).json({ data: product });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  productsRouter.delete("/:id", async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const tenantId = res.locals["tenantId"] as string;
+      const id = (req.params["id"] as string) ?? "";
+      await deps.deleteProduct(tenantId, id);
+      res.status(204).send();
     } catch (error) {
       next(error);
     }

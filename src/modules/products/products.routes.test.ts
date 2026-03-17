@@ -4,6 +4,7 @@ import { jest } from "@jest/globals";
 import { createProductsRouter } from "./products.routes.js";
 import { errorMiddleware } from "../../middleware/error.middleware.js";
 import type { createProduct, getProducts, getProductById } from "./products.service.js";
+import type { updateProduct, deleteProduct } from "./products.service.js";
 
 const AUTH_HEADER = "Authorization";
 const USER_ID_HEADER = "x-user-id";
@@ -13,11 +14,15 @@ const makeDeps = () => {
   const createProductMock = jest.fn() as jest.MockedFunction<typeof createProduct>;
   const getProductsMock = jest.fn() as jest.MockedFunction<typeof getProducts>;
   const getProductByIdMock = jest.fn() as jest.MockedFunction<typeof getProductById>;
+  const updateProductMock = jest.fn() as jest.MockedFunction<typeof updateProduct>;
+  const deleteProductMock = jest.fn() as jest.MockedFunction<typeof deleteProduct>;
 
   return {
     createProduct: createProductMock,
     getProducts: getProductsMock,
     getProductById: getProductByIdMock,
+    updateProduct: updateProductMock,
+    deleteProduct: deleteProductMock,
   };
 };
 
@@ -226,5 +231,94 @@ describe("productsRouter", () => {
     expect(response.status).toBe(200);
     expect(response.body.data.id).toBe("prod-3");
     expect(deps.getProductById).toHaveBeenCalledWith("tenant-1", "prod-3");
+  });
+});
+
+describe("PUT /products/:id", () => {
+  const createTestApp = (router: express.Router) => {
+    const app = express();
+    app.use(express.json());
+    app.use(router);
+    app.use((err: unknown, req: express.Request, res: express.Response, next: express.NextFunction) => {
+      errorMiddleware(err, req, res, next);
+    });
+    return app;
+  };
+
+  it("returns 200 with updated product", async () => {
+    const deps = makeDeps();
+    deps.updateProduct.mockResolvedValue({
+      id: "prod-3",
+      tenantId: "tenant-1",
+      name: "Updated Widget",
+      price: 1999,
+      description: "",
+      createdAt: new Date("2025-01-01"),
+    });
+    const app = createTestApp(createProductsRouter(deps));
+    const response = await request(app)
+      .put("/prod-3")
+      .set(makeAuthHeaders())
+      .send({ name: "Updated Widget", price: 1999 });
+    expect(response.status).toBe(200);
+    expect(response.body.data.name).toBe("Updated Widget");
+    expect(deps.updateProduct).toHaveBeenCalledWith("tenant-1", "prod-3", {
+      name: "Updated Widget",
+      price: 1999,
+    });
+  });
+
+  it("returns 400 when name is not a string", async () => {
+    const deps = makeDeps();
+    const app = createTestApp(createProductsRouter(deps));
+    const response = await request(app)
+      .put("/prod-3")
+      .set(makeAuthHeaders())
+      .send({ name: 42 });
+    expect(response.status).toBe(400);
+    expect(response.body.error.code).toBe("VALIDATION_ERROR");
+  });
+
+  it("returns 400 when price is negative", async () => {
+    const deps = makeDeps();
+    const app = createTestApp(createProductsRouter(deps));
+    const response = await request(app)
+      .put("/prod-3")
+      .set(makeAuthHeaders())
+      .send({ price: -5 });
+    expect(response.status).toBe(400);
+    expect(response.body.error.code).toBe("VALIDATION_ERROR");
+  });
+
+  it("returns 400 when body is not an object", async () => {
+    const deps = makeDeps();
+    const app = createTestApp(createProductsRouter(deps));
+    const response = await request(app)
+      .put("/prod-3")
+      .set(makeAuthHeaders())
+      .send([{ name: "Widget" }]);
+    expect(response.status).toBe(400);
+    expect(response.body.error.code).toBe("VALIDATION_ERROR");
+  });
+});
+
+describe("DELETE /products/:id", () => {
+  const createTestApp = (router: express.Router) => {
+    const app = express();
+    app.use(express.json());
+    app.use(router);
+    app.use((err: unknown, req: express.Request, res: express.Response, next: express.NextFunction) => {
+      errorMiddleware(err, req, res, next);
+    });
+    return app;
+  };
+
+  it("returns 204 on successful delete", async () => {
+    const deps = makeDeps();
+    deps.deleteProduct.mockResolvedValue(undefined);
+    const app = createTestApp(createProductsRouter(deps));
+    const response = await request(app).delete("/prod-3").set(makeAuthHeaders());
+    expect(response.status).toBe(204);
+    expect(deps.deleteProduct).toHaveBeenCalledWith("tenant-1", "prod-3");
   });
 });
