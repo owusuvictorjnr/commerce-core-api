@@ -106,6 +106,37 @@ describe("usersRouter", () => {
     expect(response.body.error.message).toBe("Name must be a string");
   });
 
+  it("returns 400 for PATCH /me when body is an array", async () => {
+    const deps = makeDeps();
+    const app = createTestApp(createUsersRouter(deps));
+
+    const response = await request(app)
+      .patch("/me")
+      .set(AUTH_HEADER, "Bearer any-token")
+      .set(USER_ID_HEADER, "user-1")
+      .send([{ name: "Product" }]);
+
+    expect(response.status).toBe(400);
+    expect(response.body.error.code).toBe("VALIDATION_ERROR");
+    expect(response.body.error.message).toBe("Request body must be an object");
+  });
+
+  it("returns 400 for PATCH /me when body is empty object", async () => {
+    const deps = makeDeps();
+    deps.getUserById.mockResolvedValue({ id: "user-1", email: "alice@example.com", name: "Alice" });
+    deps.updateUser.mockResolvedValue({ id: "user-1", email: "alice@example.com", name: "Alice" });
+    const app = createTestApp(createUsersRouter(deps));
+
+    const response = await request(app)
+      .patch("/me")
+      .set(AUTH_HEADER, "Bearer any-token")
+      .set(USER_ID_HEADER, "user-1")
+      .send({});
+
+    expect(response.status).toBe(200);
+    expect(deps.updateUser).toHaveBeenCalledWith("user-1", {});
+  });
+
   it("updates and returns user profile for PATCH /me", async () => {
     const deps = makeDeps();
     deps.getUserById.mockResolvedValue({ id: "user-1", email: "alice@example.com", name: "" });

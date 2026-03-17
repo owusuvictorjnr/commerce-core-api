@@ -40,13 +40,18 @@ export const createUsersRouter = (
   usersRouter.patch("/me", async (req: Request, res: Response, next: NextFunction) => {
     try {
       const auth = res.locals["auth"] as { userId: string; email: string };
-      const body = req.body as UpdateUserBody;
+      const body = req.body;
 
-      if (body && Object.prototype.hasOwnProperty.call(body, "name") && typeof body.name !== "string") {
+      if (body === null || typeof body !== "object" || Array.isArray(body)) {
+        throw new HttpError(400, "VALIDATION_ERROR", "Request body must be an object");
+      }
+
+      if (Object.prototype.hasOwnProperty.call(body, "name") && typeof body.name !== "string") {
         throw new HttpError(400, "VALIDATION_ERROR", "Name must be a string");
       }
 
-      const name = typeof body.name === "string" ? body.name.trim() : undefined;
+      const typedBody = body as UpdateUserBody;
+      const name = typeof typedBody.name === "string" ? typedBody.name.trim() : undefined;
       if (name !== undefined && name.length === 0) {
         throw new HttpError(400, "VALIDATION_ERROR", "Name cannot be empty");
       }
