@@ -5,10 +5,12 @@ import { HttpError } from "../core/errors/http-error.js";
 type AuthContext = {
 	token: string;
 	userId: string;
+	email: string;
 };
 
 const AUTH_HEADER = "authorization";
 const USER_ID_HEADER = "x-user-id";
+const USER_EMAIL_HEADER = "x-user-email";
 
 const isBypassEnabled = (): boolean => {
 	const bypass = process.env["AUTH_BYPASS"] === "true";
@@ -31,25 +33,38 @@ const getTokenFromHeader = (req: Request): string => {
 	return token;
 };
 
-const verifyAndExtractUserId = (token: string): string => {
+const decodeJwtPayload = (token: string, jwtSecret: string): JwtPayload => {
+	const decoded = jwt.verify(token, jwtSecret);
+	if (!decoded || typeof decoded === "string") {
+		throw new HttpError(401, "UNAUTHORIZED", "Invalid authentication token");
+	}
+
+	return decoded as JwtPayload;
+};
+
+const readRequiredStringClaim = (value: unknown, message: string): string => {
+	if (typeof value !== "string" || value.trim() === "") {
+		throw new HttpError(401, "UNAUTHORIZED", message);
+	}
+
+	return value.trim();
+};
+
+const verifyAndExtractAuthClaims = (token: string): { userId: string; email: string } => {
 	const jwtSecret = process.env["JWT_SECRET"];
 	if (!jwtSecret) {
 		throw new HttpError(500, "INTERNAL_SERVER_ERROR", "Authentication is misconfigured on the server");
 	}
 
 	try {
-		const decoded = jwt.verify(token, jwtSecret);
-		if (!decoded || typeof decoded === "string") {
-			throw new HttpError(401, "UNAUTHORIZED", "Invalid authentication token");
-		}
+		const payload = decodeJwtPayload(token, jwtSecret);
+		const userId = readRequiredStringClaim(
+			payload.sub ?? payload["userId"],
+			"Authentication token missing required subject",
+		);
+		const email = readRequiredStringClaim(payload["email"], "Authentication token missing required email");
 
-		const payload = decoded as JwtPayload;
-		const userId = (payload.sub ?? payload["userId"]) as string | undefined;
-		if (!userId) {
-			throw new HttpError(401, "UNAUTHORIZED", "Authentication token missing required subject");
-		}
-
-		return userId;
+		return { userId, email };
 	} catch (error) {
 		if (error instanceof HttpError) {
 			throw error;
@@ -58,17 +73,27 @@ const verifyAndExtractUserId = (token: string): string => {
 	}
 };
 
+const extractBypassClaims = (req: Request): { userId: string; email: string } => {
+	const rawUserId = req.header(USER_ID_HEADER);
+	const rawEmail = req.header(USER_EMAIL_HEADER);
+	const userId = (rawUserId ?? "anonymous").trim() || "anonymous";
+	const trimmedEmail = (rawEmail ?? "").trim();
+	const email = trimmedEmail || `${userId}@example.test`;
+
+	return { userId, email };
+};
+
 export const authMiddleware = (req: Request, res: Response, next: NextFunction): void => {
 	try {
 		const token = getTokenFromHeader(req);
+		const bypassEnabled = isBypassEnabled();
 
-		const userId = isBypassEnabled()
-			? req.header(USER_ID_HEADER) ?? "anonymous"
-			: verifyAndExtractUserId(token);
+		const claims = bypassEnabled ? extractBypassClaims(req) : verifyAndExtractAuthClaims(token);
 
 		const auth: AuthContext = {
 			token,
-			userId,
+			userId: claims.userId,
+			email: claims.email,
 		};
 
 		res.locals["auth"] = auth;
