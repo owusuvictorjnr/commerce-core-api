@@ -4,7 +4,6 @@ import jwt, { type SignOptions } from "jsonwebtoken";
 import { eventBus } from "../../events/event-bus.js";
 import { EVENTS } from "../../events/event.types.js";
 import { HttpError } from "../../core/errors/http-error.js";
-import { logger } from "../../core/logger/index.js";
 
 const scrypt = promisify(scryptCallback);
 const SCRYPT_SALT_BYTES = 16;
@@ -120,21 +119,8 @@ export const registerUser = async (email: string, password: string): Promise<Aut
   usersByEmail.set(normalizedEmail, user);
   try {
     eventBus.emit(EVENTS.USER_CREATED, { email: normalizedEmail });
-  } catch (error) {
-    if (error instanceof Error) {
-      logger.error("Failed to emit USER_CREATED event", {
-        errorMessage: error.message,
-        errorStack: error.stack,
-        email: normalizedEmail,
-        userId: user.id,
-      });
-    } else {
-      logger.error("Failed to emit USER_CREATED event", {
-        error,
-        email: normalizedEmail,
-        userId: user.id,
-      });
-    }
+  } catch {
+    // Intentionally ignore: EventBus already logs handler failures.
   }
 
   return toAuthResult(user);
