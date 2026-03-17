@@ -133,8 +133,9 @@ export const registerUser = async (email: string, password: string): Promise<Aut
 
 export const loginUser = async (email: string, password: string): Promise<AuthResult> => {
   const normalizedEmail = email.trim().toLowerCase();
+  const trimmedPassword = password.trim();
   const user = usersByEmail.get(normalizedEmail);
-  const isValid = user ? await verifyPassword(password, user.passwordHash) : false;
+  const isValid = user ? await verifyPassword(trimmedPassword, user.passwordHash) : false;
   if (!user || !isValid) {
     throw new HttpError(401, "UNAUTHORIZED", "Invalid email or password");
   }

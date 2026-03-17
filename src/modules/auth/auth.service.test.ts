@@ -27,6 +27,15 @@ describe("auth.service", () => {
     expect(typeof loginResult.token).toBe("string");
   });
 
+  it("allows login when password has surrounding whitespace", async () => {
+    await registerUser("user@example.com", "password123");
+
+    const loginResult = await loginUser("user@example.com", "  password123  ");
+
+    expect(loginResult.user.email).toBe("user@example.com");
+    expect(typeof loginResult.token).toBe("string");
+  });
+
   it("rejects login with incorrect password", async () => {
     await registerUser("user@example.com", "password123");
 
