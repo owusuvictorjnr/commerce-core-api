@@ -33,6 +33,23 @@ const getTokenFromHeader = (req: Request): string => {
 	return token;
 };
 
+const decodeJwtPayload = (token: string, jwtSecret: string): JwtPayload => {
+	const decoded = jwt.verify(token, jwtSecret);
+	if (!decoded || typeof decoded === "string") {
+		throw new HttpError(401, "UNAUTHORIZED", "Invalid authentication token");
+	}
+
+	return decoded as JwtPayload;
+};
+
+const readRequiredStringClaim = (value: unknown, message: string): string => {
+	if (typeof value !== "string" || value.trim() === "") {
+		throw new HttpError(401, "UNAUTHORIZED", message);
+	}
+
+	return value.trim();
+};
+
 const verifyAndExtractAuthClaims = (token: string): { userId: string; email: string } => {
 	const jwtSecret = process.env["JWT_SECRET"];
 	if (!jwtSecret) {
@@ -40,24 +57,14 @@ const verifyAndExtractAuthClaims = (token: string): { userId: string; email: str
 	}
 
 	try {
-		const decoded = jwt.verify(token, jwtSecret);
-		if (!decoded || typeof decoded === "string") {
-			throw new HttpError(401, "UNAUTHORIZED", "Invalid authentication token");
-		}
+		const payload = decodeJwtPayload(token, jwtSecret);
+		const userId = readRequiredStringClaim(
+			payload.sub ?? payload["userId"],
+			"Authentication token missing required subject",
+		);
+		const email = readRequiredStringClaim(payload["email"], "Authentication token missing required email");
 
-		const payload = decoded as JwtPayload;
-		const rawUserId = payload.sub ?? payload["userId"];
-		if (typeof rawUserId !== "string" || rawUserId.trim() === "") {
-			throw new HttpError(401, "UNAUTHORIZED", "Authentication token missing required subject");
-		}
-		const userId = rawUserId.trim();
-
-		const rawEmail = payload["email"];
-		if (typeof rawEmail !== "string" || rawEmail.trim() === "") {
-			throw new HttpError(401, "UNAUTHORIZED", "Authentication token missing required email");
-		}
-
-		return { userId, email: rawEmail };
+		return { userId, email };
 	} catch (error) {
 		if (error instanceof HttpError) {
 			throw error;
