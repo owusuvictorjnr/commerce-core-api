@@ -130,6 +130,11 @@ describe("getPayments", () => {
     const result = await getPayments("tenant-1", "order-1");
     expect(result.items).toHaveLength(1);
     expect(result.nextCursor).toBeNull();
+    expect(paymentFindManyMock).toHaveBeenCalledWith({
+      where: { orderId: "order-1" },
+      orderBy: { id: "asc" },
+      take: 21,
+    });
   });
 });
 

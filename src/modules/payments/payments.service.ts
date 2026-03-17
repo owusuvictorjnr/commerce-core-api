@@ -87,7 +87,7 @@ export const getPayments = async (
   const pageSize = Math.min(Math.max(options.limit ?? DEFAULT_PAGE_SIZE, 1), MAX_PAGE_SIZE);
   const items = await prisma.payment.findMany({
     where: { orderId },
-    orderBy: { createdAt: "asc" },
+    orderBy: { id: "asc" },
     take: pageSize + 1,
     ...(options.cursor ? { cursor: { id: options.cursor }, skip: 1 } : {}),
   });
