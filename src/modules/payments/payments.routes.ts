@@ -26,6 +26,71 @@ const parseCursor = (value: unknown): string | null => {
   return value.trim();
 };
 
+const readBodyRecord = (body: unknown): Record<string, unknown> => {
+  if (body === null || typeof body !== "object" || Array.isArray(body)) {
+    throw new HttpError(400, "VALIDATION_ERROR", "Request body must be a JSON object");
+  }
+
+  return body as Record<string, unknown>;
+};
+
+const readOrderId = (value: unknown): string => {
+  if (typeof value !== "string" || !value.trim()) {
+    throw new HttpError(400, "VALIDATION_ERROR", "orderId is required");
+  }
+  return value.trim();
+};
+
+const readAmount = (value: unknown): number => {
+  if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) {
+    throw new HttpError(400, "VALIDATION_ERROR", "amount must be a positive number");
+  }
+  return value;
+};
+
+const readPaymentType = (value: unknown): PaymentType => {
+  if (!VALID_PAYMENT_TYPES.includes(value as PaymentType)) {
+    throw new HttpError(
+      400,
+      "VALIDATION_ERROR",
+      `paymentType must be one of: ${VALID_PAYMENT_TYPES.join(", ")}`,
+    );
+  }
+  return value as PaymentType;
+};
+
+const readTransactionReference = (value: unknown): string | undefined => {
+  if (value === undefined) {
+    return undefined;
+  }
+  if (typeof value !== "string") {
+    throw new HttpError(400, "VALIDATION_ERROR", "transactionReference must be a string");
+  }
+  return value;
+};
+
+const parseCreatePaymentBody = (
+  body: unknown,
+): {
+  orderId: string;
+  amount: number;
+  paymentType: PaymentType;
+  transactionReference?: string;
+} => {
+  const record = readBodyRecord(body);
+  const orderId = readOrderId(record["orderId"]);
+  const amount = readAmount(record["amount"]);
+  const paymentType = readPaymentType(record["paymentType"]);
+  const transactionReference = readTransactionReference(record["transactionReference"]);
+
+  return {
+    orderId,
+    amount,
+    paymentType,
+    ...(transactionReference ? { transactionReference } : {}),
+  };
+};
+
 export const createPaymentsRouter = (
   deps: PaymentsRouteDependencies = { createPayment, getPayments, getPaymentById },
 ) => {
@@ -37,35 +102,12 @@ export const createPaymentsRouter = (
   paymentsRouter.post("/", async (req: Request, res: Response, next: NextFunction) => {
     try {
       const tenantId = res.locals["tenantId"] as string;
-      const body = req.body;
-      if (body === null || typeof body !== "object" || Array.isArray(body)) {
-        throw new HttpError(400, "VALIDATION_ERROR", "Request body must be a JSON object");
-      }
-      const record = body as Record<string, unknown>;
-      const { orderId, amount, paymentType, transactionReference } = record;
-
-      if (typeof orderId !== "string" || !orderId.trim()) {
-        throw new HttpError(400, "VALIDATION_ERROR", "orderId is required");
-      }
-      if (typeof amount !== "number" || !Number.isFinite(amount) || amount <= 0) {
-        throw new HttpError(400, "VALIDATION_ERROR", "amount must be a positive number");
-      }
-      if (!VALID_PAYMENT_TYPES.includes(paymentType as PaymentType)) {
-        throw new HttpError(
-          400,
-          "VALIDATION_ERROR",
-          `paymentType must be one of: ${VALID_PAYMENT_TYPES.join(", ")}`,
-        );
-      }
-      if (transactionReference !== undefined && typeof transactionReference !== "string") {
-        throw new HttpError(400, "VALIDATION_ERROR", "transactionReference must be a string");
-      }
-
-      const payment = await deps.createPayment(tenantId, orderId.trim(), {
-        amount,
-        paymentType: paymentType as PaymentType,
-        ...(transactionReference
-          ? { transactionReference: transactionReference as string }
+      const parsed = parseCreatePaymentBody(req.body);
+      const payment = await deps.createPayment(tenantId, parsed.orderId, {
+        amount: parsed.amount,
+        paymentType: parsed.paymentType,
+        ...(parsed.transactionReference !== undefined
+          ? { transactionReference: parsed.transactionReference }
           : {}),
       });
       res.status(201).json({ data: payment });

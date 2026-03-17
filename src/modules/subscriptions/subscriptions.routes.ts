@@ -32,6 +32,79 @@ const parseCursor = (value: unknown): string | null => {
   return value.trim();
 };
 
+const readBodyRecord = (body: unknown): Record<string, unknown> => {
+  if (body === null || typeof body !== "object" || Array.isArray(body)) {
+    throw new HttpError(400, "VALIDATION_ERROR", "Request body must be a JSON object");
+  }
+  return body as Record<string, unknown>;
+};
+
+const parseIsoDate = (value: unknown, missingMessage: string, invalidMessage: string): Date => {
+  if (typeof value !== "string" || !value.trim()) {
+    throw new HttpError(400, "VALIDATION_ERROR", missingMessage);
+  }
+
+  const parsedDate = new Date(value);
+  if (Number.isNaN(parsedDate.getTime())) {
+    throw new HttpError(400, "VALIDATION_ERROR", invalidMessage);
+  }
+
+  return parsedDate;
+};
+
+const parseCreateSubscriptionBody = (
+  body: unknown,
+): { orderId: string; pickupDeadline: Date } => {
+  const record = readBodyRecord(body);
+  const orderId = record["orderId"];
+  if (typeof orderId !== "string" || !orderId.trim()) {
+    throw new HttpError(400, "VALIDATION_ERROR", "orderId is required");
+  }
+
+  const pickupDeadline = parseIsoDate(
+    record["pickupDeadline"],
+    "pickupDeadline is required and must be an ISO datetime string",
+    "pickupDeadline must be a valid ISO datetime string",
+  );
+
+  return {
+    orderId: orderId.trim(),
+    pickupDeadline,
+  };
+};
+
+const parseUpdateSubscriptionBody = (
+  body: unknown,
+): { preorderStatus?: PreorderStatus; pickupDeadline?: Date } => {
+  const record = readBodyRecord(body);
+  const preorderStatusRaw = record["preorderStatus"];
+  const pickupDeadlineRaw = record["pickupDeadline"];
+
+  if (
+    preorderStatusRaw !== undefined
+    && !VALID_STATUSES.includes(preorderStatusRaw as PreorderStatus)
+  ) {
+    throw new HttpError(
+      400,
+      "VALIDATION_ERROR",
+      `preorderStatus must be one of: ${VALID_STATUSES.join(", ")}`,
+    );
+  }
+
+  return {
+    ...(preorderStatusRaw !== undefined ? { preorderStatus: preorderStatusRaw as PreorderStatus } : {}),
+    ...(pickupDeadlineRaw !== undefined
+      ? {
+          pickupDeadline: parseIsoDate(
+            pickupDeadlineRaw,
+            "pickupDeadline must be an ISO datetime string",
+            "pickupDeadline must be a valid ISO datetime string",
+          ),
+        }
+      : {}),
+  };
+};
+
 export const createSubscriptionsRouter = (
   deps: SubscriptionsRouteDependencies = {
     createSubscription,
@@ -47,27 +120,8 @@ export const createSubscriptionsRouter = (
   subscriptionsRouter.post("/", async (req: Request, res: Response, next: NextFunction) => {
     try {
       const tenantId = res.locals["tenantId"] as string;
-      const body = req.body;
-      if (body === null || typeof body !== "object" || Array.isArray(body)) {
-        throw new HttpError(400, "VALIDATION_ERROR", "Request body must be a JSON object");
-      }
-      const record = body as Record<string, unknown>;
-      const orderId = record["orderId"];
-      const pickupDeadline = record["pickupDeadline"];
-      if (typeof orderId !== "string" || !orderId.trim()) {
-        throw new HttpError(400, "VALIDATION_ERROR", "orderId is required");
-      }
-      if (typeof pickupDeadline !== "string" || !pickupDeadline.trim()) {
-        throw new HttpError(400, "VALIDATION_ERROR", "pickupDeadline is required and must be an ISO datetime string");
-      }
-      const parsedDate = new Date(pickupDeadline);
-      if (Number.isNaN(parsedDate.getTime())) {
-        throw new HttpError(400, "VALIDATION_ERROR", "pickupDeadline must be a valid ISO datetime string");
-      }
-      const created = await deps.createSubscription(tenantId, {
-        orderId: orderId.trim(),
-        pickupDeadline: parsedDate,
-      });
+      const parsed = parseCreateSubscriptionBody(req.body);
+      const created = await deps.createSubscription(tenantId, parsed);
       res.status(201).json({ data: created });
     } catch (error) {
       next(error);
@@ -113,38 +167,8 @@ export const createSubscriptionsRouter = (
     try {
       const tenantId = res.locals["tenantId"] as string;
       const id = (req.params["id"] as string) ?? "";
-      const body = req.body;
-      if (body === null || typeof body !== "object" || Array.isArray(body)) {
-        throw new HttpError(400, "VALIDATION_ERROR", "Request body must be a JSON object");
-      }
-
-      const record = body as Record<string, unknown>;
-      const preorderStatus = record["preorderStatus"];
-      const pickupDeadline = record["pickupDeadline"];
-
-      if (preorderStatus !== undefined && !VALID_STATUSES.includes(preorderStatus as PreorderStatus)) {
-        throw new HttpError(
-          400,
-          "VALIDATION_ERROR",
-          `preorderStatus must be one of: ${VALID_STATUSES.join(", ")}`,
-        );
-      }
-
-      let parsedDate: Date | undefined;
-      if (pickupDeadline !== undefined) {
-        if (typeof pickupDeadline !== "string" || !pickupDeadline.trim()) {
-          throw new HttpError(400, "VALIDATION_ERROR", "pickupDeadline must be an ISO datetime string");
-        }
-        parsedDate = new Date(pickupDeadline);
-        if (Number.isNaN(parsedDate.getTime())) {
-          throw new HttpError(400, "VALIDATION_ERROR", "pickupDeadline must be a valid ISO datetime string");
-        }
-      }
-
-      const updated = await deps.updateSubscription(tenantId, id, {
-        ...(preorderStatus !== undefined ? { preorderStatus: preorderStatus as PreorderStatus } : {}),
-        ...(parsedDate !== undefined ? { pickupDeadline: parsedDate } : {}),
-      });
+      const parsed = parseUpdateSubscriptionBody(req.body);
+      const updated = await deps.updateSubscription(tenantId, id, parsed);
       res.status(200).json({ data: updated });
     } catch (error) {
       next(error);

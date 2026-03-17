@@ -25,30 +25,97 @@ const parsePositiveInt = (value: unknown): number | null => {
   return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
 };
 
-const parseCreateProductBody = (body: CreateProductBody) => {
-  const name = typeof body.name === "string" ? body.name.trim() : "";
-  let price: number;
-  if (typeof body.price === "number") {
-    price = body.price;
-  } else if (typeof body.price === "string") {
-    const trimmedPrice = body.price.trim();
+const parseProductPrice = (value: unknown): number => {
+  if (typeof value === "number") {
+    if (!Number.isFinite(value) || value < 0) {
+      throw new HttpError(400, "VALIDATION_ERROR", "Product price must be a non-negative number");
+    }
+    return value;
+  }
+
+  if (typeof value === "string") {
+    const trimmedPrice = value.trim();
     if (!trimmedPrice || !/^\d+(\.\d+)?$/.test(trimmedPrice)) {
       throw new HttpError(400, "VALIDATION_ERROR", "Product price must be a non-negative number");
     }
-    price = Number(trimmedPrice);
-  } else {
-    throw new HttpError(400, "VALIDATION_ERROR", "Product price must be a non-negative number");
+    return Number(trimmedPrice);
   }
+
+  throw new HttpError(400, "VALIDATION_ERROR", "Product price must be a non-negative number");
+};
+
+const parseCreateProductBody = (body: CreateProductBody) => {
+  const name = typeof body.name === "string" ? body.name.trim() : "";
+  const price = parseProductPrice(body.price);
   const description = typeof body.description === "string" ? body.description : undefined;
 
   if (!name) {
     throw new HttpError(400, "VALIDATION_ERROR", "Product name is required");
   }
+
+  return { name, price, description };
+};
+
+const readBodyRecord = (body: unknown): Record<string, unknown> => {
+  if (body === null || typeof body !== "object" || Array.isArray(body)) {
+    throw new HttpError(400, "VALIDATION_ERROR", "Request body must be a JSON object");
+  }
+
+  return body as Record<string, unknown>;
+};
+
+const parseOptionalName = (value: unknown): string | undefined => {
+  if (value === undefined) {
+    return undefined;
+  }
+  if (typeof value !== "string") {
+    throw new HttpError(400, "VALIDATION_ERROR", "Product name must be a string");
+  }
+  return value;
+};
+
+const parseOptionalPrice = (value: unknown): number | undefined => {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  const price =
+    typeof value === "number"
+      ? value
+      : typeof value === "string"
+        ? Number(value)
+        : NaN;
+
   if (!Number.isFinite(price) || price < 0) {
     throw new HttpError(400, "VALIDATION_ERROR", "Product price must be a non-negative number");
   }
 
-  return { name, price, description };
+  return price;
+};
+
+const parseOptionalDescription = (value: unknown): string | undefined => {
+  if (value === undefined) {
+    return undefined;
+  }
+  if (typeof value !== "string") {
+    throw new HttpError(400, "VALIDATION_ERROR", "Product description must be a string");
+  }
+  return value;
+};
+
+const parseUpdateProductBody = (
+  body: unknown,
+): { name?: string; price?: number; description?: string } => {
+  const record = readBodyRecord(body);
+  const name = parseOptionalName(record["name"]);
+  const price = parseOptionalPrice(record["price"]);
+  const description = parseOptionalDescription(record["description"]);
+
+  return {
+    ...(name !== undefined ? { name } : {}),
+    ...(price !== undefined ? { price } : {}),
+    ...(description !== undefined ? { description } : {}),
+  };
 };
 
 export const createProductsRouter = (
@@ -131,36 +198,7 @@ export const createProductsRouter = (
     try {
       const tenantId = res.locals["tenantId"] as string;
       const id = (req.params["id"] as string) ?? "";
-      const body = req.body;
-      if (body === null || typeof body !== "object" || Array.isArray(body)) {
-        throw new HttpError(400, "VALIDATION_ERROR", "Request body must be a JSON object");
-      }
-      const record = body as Record<string, unknown>;
-      const input: { name?: string; price?: number; description?: string } = {};
-      if (record["name"] !== undefined) {
-        if (typeof record["name"] !== "string") {
-          throw new HttpError(400, "VALIDATION_ERROR", "Product name must be a string");
-        }
-        input.name = record["name"] as string;
-      }
-      if (record["price"] !== undefined) {
-        const price =
-          typeof record["price"] === "number"
-            ? record["price"]
-            : typeof record["price"] === "string"
-              ? Number(record["price"])
-              : NaN;
-        if (!Number.isFinite(price as number) || (price as number) < 0) {
-          throw new HttpError(400, "VALIDATION_ERROR", "Product price must be a non-negative number");
-        }
-        input.price = price as number;
-      }
-      if (record["description"] !== undefined) {
-        if (typeof record["description"] !== "string") {
-          throw new HttpError(400, "VALIDATION_ERROR", "Product description must be a string");
-        }
-        input.description = record["description"] as string;
-      }
+      const input = parseUpdateProductBody(req.body);
       const product = await deps.updateProduct(tenantId, id, input);
       res.status(200).json({ data: product });
     } catch (error) {
