@@ -75,6 +75,11 @@ export const createOrder = async (
 ) => {
   const prisma = getPrismaClient();
 
+  const user = await prisma.user.findFirst({ where: { id: userId, tenantId } });
+  if (!user) {
+    throw new HttpError(404, "NOT_FOUND", "User not found for this tenant");
+  }
+
   if (!data.items.length) {
     throw new HttpError(400, "VALIDATION_ERROR", "Order must have at least one item");
   }

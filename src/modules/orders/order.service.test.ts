@@ -7,6 +7,7 @@ const findManyMock = jest.fn<(...args: unknown[]) => Promise<Order[]>>();
 const createMock = jest.fn<(...args: unknown[]) => Promise<unknown>>();
 const findFirstMock = jest.fn<(...args: unknown[]) => Promise<Order | null>>();
 const updateMock = jest.fn<(...args: unknown[]) => Promise<Order>>();
+const userFindFirstMock = jest.fn<(...args: unknown[]) => Promise<unknown>>();
 
 jest.unstable_mockModule("../../database/prisma-client.js", () => ({
   default: () => ({
@@ -15,6 +16,9 @@ jest.unstable_mockModule("../../database/prisma-client.js", () => ({
       create: createMock,
       findFirst: findFirstMock,
       update: updateMock,
+    },
+    user: {
+      findFirst: userFindFirstMock,
     },
   }),
 }));
@@ -47,18 +51,39 @@ const makeOrder = (overrides: Partial<Order> = {}): Order => ({
   ...overrides,
 });
 
+const makeUser = (overrides: Record<string, unknown> = {}) => ({
+  id: "user-1",
+  tenantId: "tenant-1",
+  email: "user@example.com",
+  name: null,
+  role: "CUSTOMER",
+  createdAt: new Date(),
+  updatedAt: new Date(),
+  ...overrides,
+});
+
 describe("createOrder", () => {
   beforeEach(() => {
     createMock.mockReset();
+    userFindFirstMock.mockReset();
+  });
+
+  it("throws 404 when user does not belong to the tenant", async () => {
+    userFindFirstMock.mockResolvedValue(null);
+    await expect(
+      createOrder("tenant-1", "user-other", { items: [{ productId: "p-1", quantity: 1, price: 10 }] }),
+    ).rejects.toMatchObject({ statusCode: 404, code: "NOT_FOUND" });
   });
 
   it("throws 400 when items array is empty", async () => {
+    userFindFirstMock.mockResolvedValue(makeUser());
     await expect(
       createOrder("tenant-1", "user-1", { items: [] }),
     ).rejects.toMatchObject({ statusCode: 400, code: "VALIDATION_ERROR" });
   });
 
   it("creates order with calculated totalAmount", async () => {
+    userFindFirstMock.mockResolvedValue(makeUser());
     createMock.mockResolvedValue(makeOrder({ totalAmount: 200, remainingAmount: 200 }));
     const result = await createOrder("tenant-1", "user-1", {
       items: [
