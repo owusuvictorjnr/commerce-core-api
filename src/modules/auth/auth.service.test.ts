@@ -1,5 +1,10 @@
 import { HttpError } from "../../core/errors/http-error.js";
-import { __resetAuthUsersForTests, loginUser, registerUser } from "./auth.service.js";
+import {
+  __resetAuthUsersForTests,
+  __setMaxAuthUsersForTests,
+  loginUser,
+  registerUser,
+} from "./auth.service.js";
 
 describe("auth.service", () => {
   const originalJwtSecret = process.env["JWT_SECRET"];
@@ -75,6 +80,18 @@ describe("auth.service", () => {
       statusCode: 400,
       code: "VALIDATION_ERROR",
       message: "Password must be at least 8 characters long",
+    } satisfies Partial<HttpError>);
+  });
+
+  it("rejects registration when in-memory auth user limit is reached", async () => {
+    __setMaxAuthUsersForTests(2);
+
+    await registerUser("one@example.com", "password123");
+    await registerUser("two@example.com", "password123");
+
+    await expect(registerUser("three@example.com", "password123")).rejects.toMatchObject({
+      statusCode: 503,
+      code: "RESOURCE_LIMIT_EXCEEDED",
     } satisfies Partial<HttpError>);
   });
 });

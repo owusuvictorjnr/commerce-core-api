@@ -27,6 +27,8 @@ type AuthResult = {
 
 type JwtExpiresIn = Exclude<SignOptions["expiresIn"], undefined>;
 
+const DEFAULT_MAX_AUTH_USERS = 10_000;
+let maxAuthUsers = DEFAULT_MAX_AUTH_USERS;
 const usersByEmail = new Map<string, AuthUser>();
 
 const hashPassword = async (password: string): Promise<string> => {
@@ -99,6 +101,13 @@ export const registerUser = async (email: string, password: string): Promise<Aut
   if (usersByEmail.has(normalizedEmail)) {
     throw new HttpError(409, "CONFLICT", "User with this email already exists");
   }
+  if (usersByEmail.size >= maxAuthUsers) {
+    throw new HttpError(
+      503,
+      "RESOURCE_LIMIT_EXCEEDED",
+      "In-memory auth user limit reached. This storage is non-production and bounded.",
+    );
+  }
 
   const passwordHash = await hashPassword(trimmedPassword);
 
@@ -145,4 +154,9 @@ export const loginUser = async (email: string, password: string): Promise<AuthRe
 
 export const __resetAuthUsersForTests = (): void => {
   usersByEmail.clear();
+  maxAuthUsers = DEFAULT_MAX_AUTH_USERS;
+};
+
+export const __setMaxAuthUsersForTests = (max: number): void => {
+  maxAuthUsers = max;
 };
